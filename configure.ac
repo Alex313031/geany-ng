@@ -149,6 +149,7 @@ AC_CONFIG_FILES([
 		icons/24x24/Makefile
 		icons/32x32/Makefile
 		icons/48x48/Makefile
+		icons/64x64/Makefile
 		icons/scalable/Makefile
 		icons/tango/Makefile
 		icons/tango/16x16/Makefile
