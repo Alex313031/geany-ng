@@ -86,7 +86,7 @@ AC_CHECK_DECLS([_NSGetEnviron],,,[[#include <crt_externs.h>]])
 
 # check for VCS revision
 GEANY_CHECK_REVISION([dnl force debug mode for a VCS working copy
-					  CFLAGS="-g -DGEANY_DEBUG $CFLAGS"])
+					  CFLAGS="$CFLAGS"])
 
 GEANY_CHECK_GTK
 GEANY_CHECK_GTK_FUNCS([g_strv_equal])
