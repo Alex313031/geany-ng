@@ -11,6 +11,8 @@ as possible from a special Desktop Environment like KDE or GNOME. So it
 is using only the GTK+ toolkit and therefore you need only the
 GTK+ runtime libraries to run Geany.
 
+NG
+These are optimized builds, built with `-g0 -s -O3 -mavx -maes -DNDEBUG`, as well as the main icon and build icon changed.
 
 Features
 --------
