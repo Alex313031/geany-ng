@@ -121,6 +121,43 @@ typedef enum
 	MAX_PAYLOAD
 } ConfigPayload;
 
+/* Fallback only used when loading config. Saving config should always write the real file. */
+static gchar *get_keyfile_for_payload(ConfigPayload payload)
+{
+	static gboolean logged;
+	gchar *file;
+
+	switch (payload)
+	{
+		case PREFS:
+			file = g_build_filename(app->configdir, PREFS_FILE, NULL);
+			if (! g_file_test(file, G_FILE_TEST_IS_REGULAR))
+			{	/* config file does not (yet) exist, so try to load a global config
+				 * file which may be created by distributors */
+				g_message("No user config file found, trying to use global configuration.");
+				g_free(file);
+				file = g_build_filename(app->datadir, PREFS_FILE, NULL);
+			}
+			return file;
+		case SESSION:
+			file = g_build_filename(app->configdir, SESSION_FILE, NULL);
+			if (! g_file_test(file, G_FILE_TEST_IS_REGULAR))
+			{
+				if (!logged)
+				{
+					g_message("No user session file found, trying to use configuration file.");
+					logged = TRUE;
+				}
+				g_free(file);
+				file = g_build_filename(app->configdir, PREFS_FILE, NULL);
+			}
+			return file;
+		case MAX_PAYLOAD:
+			g_assert_not_reached();
+	}
+	return NULL;
+}
+
 static GPtrArray *keyfile_groups[MAX_PAYLOAD];
 GPtrArray *pref_groups;
 
@@ -500,7 +537,6 @@ static void save_dialog_prefs(GKeyFile *config)
 	g_key_file_set_boolean(config, PACKAGE, "tab_order_beside", file_prefs.tab_order_beside);
 	g_key_file_set_integer(config, PACKAGE, "tab_pos_editor", interface_prefs.tab_pos_editor);
 	g_key_file_set_integer(config, PACKAGE, "tab_pos_msgwin", interface_prefs.tab_pos_msgwin);
-	g_key_file_set_boolean(config, PACKAGE, "use_native_windows_dialogs", interface_prefs.use_native_windows_dialogs);
 
 	/* display */
 	g_key_file_set_boolean(config, PACKAGE, "show_indent_guide", editor_prefs.show_indent_guide);
@@ -617,6 +653,7 @@ static void save_ui_prefs(GKeyFile *config)
 	g_key_file_set_boolean(config, PACKAGE, "statusbar_visible", interface_prefs.statusbar_visible);
 	g_key_file_set_boolean(config, PACKAGE, "msgwindow_visible", ui_prefs.msgwindow_visible);
 	g_key_file_set_boolean(config, PACKAGE, "fullscreen", ui_prefs.fullscreen);
+	g_key_file_set_boolean(config, PACKAGE, "symbols_group_by_type", ui_prefs.symbols_group_by_type);
 	g_key_file_set_string(config, PACKAGE, "color_picker_palette", ui_prefs.color_picker_palette);
 
 	/* get the text from the scribble textview */
@@ -666,12 +703,15 @@ static void save_ui_session(GKeyFile *config)
 	}
 }
 
-void write_config_file(gchar const *filename, ConfigPayload payload)
+static void write_config_file(ConfigPayload payload)
 {
 	GKeyFile *config = g_key_file_new();
-	gchar *configfile = g_build_filename(app->configdir, filename, NULL);
+	const gchar *filename;
+	gchar *configfile;
 	gchar *data;
 
+	filename = payload == SESSION ? SESSION_FILE : PREFS_FILE;
+	configfile = g_build_filename(app->configdir, filename, NULL);
 	g_key_file_load_from_file(config, configfile, G_KEY_FILE_NONE, NULL);
 
 	switch (payload)
@@ -697,6 +737,8 @@ void write_config_file(gchar const *filename, ConfigPayload payload)
 			}
 #endif
 			break;
+		case MAX_PAYLOAD:
+			g_assert_not_reached();
 	}
 
 	/* new settings should be added in init_pref_groups() */
@@ -716,8 +758,8 @@ void configuration_save(void)
 	/* save all configuration files
 	 * it is probably not very efficient to write both files every time
 	 * could be more selective about which file is saved when */
-	write_config_file(PREFS_FILE, PREFS);
-	write_config_file(SESSION_FILE, SESSION);
+	write_config_file(PREFS);
+	write_config_file(SESSION);
 }
 
 static void load_recent_files(GKeyFile *config, GQueue *queue, const gchar *key)
@@ -844,7 +886,6 @@ static void load_dialog_prefs(GKeyFile *config)
 	interface_prefs.editor_font = utils_get_setting_string(config, PACKAGE, "editor_font", GEANY_DEFAULT_FONT_EDITOR);
 	interface_prefs.tagbar_font = utils_get_setting_string(config, PACKAGE, "tagbar_font", GEANY_DEFAULT_FONT_SYMBOL_LIST);
 	interface_prefs.msgwin_font = utils_get_setting_string(config, PACKAGE, "msgwin_font", GEANY_DEFAULT_FONT_MSG_WINDOW);
-	interface_prefs.use_native_windows_dialogs = utils_get_setting_boolean(config, PACKAGE, "use_native_windows_dialogs", FALSE);
 
 	/* display, editor */
 	editor_prefs.long_line_enabled = utils_get_setting_boolean(config, PACKAGE, "long_line_enabled", TRUE);
@@ -1043,6 +1084,7 @@ static void load_ui_prefs(GKeyFile *config)
 	ui_prefs.sidebar_visible = utils_get_setting_boolean(config, PACKAGE, "sidebar_visible", TRUE);
 	ui_prefs.msgwindow_visible = utils_get_setting_boolean(config, PACKAGE, "msgwindow_visible", TRUE);
 	ui_prefs.fullscreen = utils_get_setting_boolean(config, PACKAGE, "fullscreen", FALSE);
+	ui_prefs.symbols_group_by_type = utils_get_setting_boolean(config, PACKAGE, "symbols_group_by_type", TRUE);
 	ui_prefs.custom_date_format = utils_get_setting_string(config, PACKAGE, "custom_date_format", "");
 	ui_prefs.custom_commands = g_key_file_get_string_list(config, PACKAGE, "custom_commands", NULL, NULL);
 	ui_prefs.custom_commands_labels = g_key_file_get_string_list(config, PACKAGE, "custom_commands_labels", NULL, NULL);
@@ -1172,7 +1214,7 @@ void configuration_clear_default_session(void)
  */
 void configuration_load_default_session(void)
 {
-	gchar *configfile = g_build_filename(app->configdir, SESSION_FILE, NULL);
+	gchar *configfile = get_keyfile_for_payload(SESSION);
 	GKeyFile *config = g_key_file_new();
 
 	g_return_if_fail(default_session_files == NULL);
@@ -1185,17 +1227,12 @@ void configuration_load_default_session(void)
 	g_key_file_free(config);
 }
 
-gboolean read_config_file(gchar const *filename, ConfigPayload payload)
+static gboolean read_config_file(ConfigPayload payload)
 {
-	gchar *configfile = g_build_filename(app->configdir, filename, NULL);
 	GKeyFile *config = g_key_file_new();
+	gchar *configfile;
 
-	if (! g_file_test(configfile, G_FILE_TEST_IS_REGULAR))
-	{	/* config file does not (yet) exist, so try to load a global config file which may be */
-		/* created by distributors */
-		geany_debug("No user config file found, trying to use global configuration.");
-		SETPTR(configfile, g_build_filename(app->datadir, filename, NULL));
-	}
+	configfile = get_keyfile_for_payload(payload);
 	g_key_file_load_from_file(config, configfile, G_KEY_FILE_NONE, NULL);
 	g_free(configfile);
 
@@ -1222,6 +1259,8 @@ gboolean read_config_file(gchar const *filename, ConfigPayload payload)
 			load_recent_files(config, ui_prefs.recent_queue, "recent_files");
 			load_recent_files(config, ui_prefs.recent_projects_queue, "recent_projects");
 			break;
+		case MAX_PAYLOAD:
+			g_assert_not_reached();
 	}
 
 	g_key_file_free(config);
@@ -1231,17 +1270,9 @@ gboolean read_config_file(gchar const *filename, ConfigPayload payload)
 
 gboolean configuration_load(void)
 {
-	gboolean prefs_loaded = read_config_file(PREFS_FILE, PREFS);
-	/* backwards-compatibility: try to read session from preferences if session file doesn't exist */
-	gchar *session_filename = SESSION_FILE;
-	gchar *session_file = g_build_filename(app->configdir, session_filename, NULL);
-	if (! g_file_test(session_file, G_FILE_TEST_IS_REGULAR))
-	{
-		geany_debug("No user session file found, trying to use configuration file.");
-		session_filename = PREFS_FILE;
-	}
-	g_free(session_file);
-	gboolean sess_loaded = read_config_file(session_filename, SESSION);
+	gboolean prefs_loaded = read_config_file(PREFS);
+	gboolean sess_loaded = read_config_file(SESSION);
+
 	return prefs_loaded && sess_loaded;
 }
 
