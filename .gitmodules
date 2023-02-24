@@ -1,0 +1,3 @@
+[submodule "geany-themes"]
+	path = geany-themes
+	url = https://github.com/geany/geany-themes.git
