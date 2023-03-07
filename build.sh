@@ -49,10 +49,10 @@ printf "${CYA}\n" &&
 
 
 # Build geany-ng
-export CFLAGS="-g0 -s -O3 -mavx -maes -DNDEBUG" &&
-export CXXFLAGS="-g0 -s -O3 -mavx -maes -DNDEBUG" &&
-export CPPFLAGS="-g0 -s -O3 -mavx -maes -DNDEBUG" &&
-export LDFLAGS="-Wl,-O3 -mavx -maes" &&
+export CFLAGS="-g0 -s -O3 -mavx -maes -flto=auto -DNDEBUG" &&
+export CXXFLAGS="-g0 -s -O3 -mavx -maes -flto=auto -DNDEBUG" &&
+export CPPFLAGS="-g0 -s -O3 -mavx -maes -flto=auto -DNDEBUG" &&
+export LDFLAGS="-Wl,-O3 -mavx -maes -flto=auto" &&
 
 ./autogen.sh &&
 
