@@ -204,10 +204,7 @@ Coding
   them down into smaller static functions where possible. This makes code
   much easier to read and maintain.
 * Use GLib types and functions - gint not int, g_free() not free().
-* Your code should build against GLib 2.32 and GTK 3.0. At least for the
-  moment, we want to keep the minimum requirement for GTK at 3.0 (of
-  course, you can use the GTK_CHECK_VERSION macro to protect code using
-  later versions).
+* Your code should build against GLib 2.32 and GTK 3.24.
 * Variables should be declared (and initialized) as close as practical
   to their first use. This reduces the chances of intervening code being
   inserted between declaration and use, where the variable may be
@@ -525,7 +522,7 @@ printf("Prefix: %s", GEANY_PREFIX);
 
 Adding a source file foo.[hc] in src/ or plugins/
 -------------------------------------------------
-* Add foo.c, foo.h to SRCS in path/Makefile.am.
+* Add foo.c, foo.h to SRCS in path/Makefile.am and meson.build.
 * Add path/foo.c to po/POTFILES.in (for string translation).
 
 Adding a filetype
@@ -585,10 +582,12 @@ LexFoo.cxx. Try the official Scintilla project first.
     Scintilla. All new lexers should be submitted back to the Scintilla
     project to save duplication of work.
 
-When adding a lexer, update:
+When adding a lexer:
 
-* scintilla/Makefile.am
-* scintilla/src/Catalogue.cxx - add a LINK_LEXER command *manually*
+* add LexFoo.cxx to scintilla/lexilla/lexers
+* add `&lmFoo` to scintilla/lexilla/src/Lexilla.cxx and
+  scintilla/scintilla_changes.patch
+* update scintilla/Makefile.am and meson.build
 
 For syntax highlighting, you will need to edit highlighting.c and
 highlightingmappings.h and add the following things:
@@ -659,7 +658,7 @@ https://github.com/universal-ctags/ctags
 
 Method
 ``````
-* Add foo.c to SRCS in Makefile.am.
+* Add foo.c to SRCS in Makefile.am and meson.build.
 * Add Foo to src/tagmanager/tm_parsers.h
 * Add TM_PARSER_FOO to src/tagmanager/tm_parser.h.  The list here must follow
   exactly the order in src/tagmanager/tm_parsers.h.
@@ -708,8 +707,8 @@ This file contains the tag information expected to be generated from
 the corresponding source file together with its human-readable form.
 
 When you have these two files, you have to list your new test along the
-other ones in the ``test_source`` variable in ``tests/ctags/Makefile.am``.
-Please keep this list sorted alphabetically.
+other ones in the ``test_source`` variable in ``tests/ctags/Makefile.am``
+and ``tests/meson.build``. Please keep this list sorted alphabetically.
 
 Upgrading Scintilla
 -------------------
