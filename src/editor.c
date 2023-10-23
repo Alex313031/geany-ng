@@ -346,7 +346,7 @@ static gboolean on_editor_button_press_event(GtkWidget *widget, GdkEventButton *
 		g_signal_emit_by_name(geany_object, "update-editor-menu",
 			current_word, editor_info.click_pos, doc);
 
-		ui_menu_popup(GTK_MENU(main_widgets.editor_menu), NULL, NULL, event->button, event->time);
+		gtk_menu_popup_at_pointer(GTK_MENU(main_widgets.editor_menu), (GdkEvent *) event);
 		return TRUE;
 	}
 	return FALSE;
@@ -702,7 +702,6 @@ static gboolean autocomplete_scope(GeanyEditor *editor, const gchar *root, gsize
 	ScintillaObject *sci = editor->sci;
 	gint pos = sci_get_current_position(editor->sci);
 	gint line = sci_get_current_line(editor->sci) + 1;
-	gchar typed = sci_get_char_at(sci, pos - 1);
 	gchar brace_char;
 	gchar *name;
 	GeanyFiletype *ft = editor->document->file_type;
@@ -722,9 +721,6 @@ static gboolean autocomplete_scope(GeanyEditor *editor, const gchar *root, gsize
 		/* allow for a space between word and operator */
 		while (pos > 0 && isspace(sci_get_char_at(sci, pos - 1)))
 			pos--;
-
-		if (pos > 0)
-			typed = sci_get_char_at(sci, pos - 1);
 	}
 
 	autocomplete_suffix_len = scope_autocomplete_suffix(sci, ft->lang, pos,

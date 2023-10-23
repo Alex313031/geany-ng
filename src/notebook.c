@@ -512,7 +512,7 @@ static void show_tab_bar_popup_menu(GdkEventButton *event, GeanyDocument *doc)
 	gtk_container_add(GTK_CONTAINER(menu), menu_item);
 	g_signal_connect(menu_item, "activate", G_CALLBACK(on_close_all1_activate), NULL);
 
-	ui_menu_popup(GTK_MENU(menu), NULL, NULL, event->button, event->time);
+	gtk_menu_popup_at_pointer(GTK_MENU(menu), (GdkEvent *) event);
 }
 
 
@@ -764,16 +764,21 @@ gint notebook_new_tab(GeanyDocument *this)
 
 	document_update_tab_label(this);
 
-	if (file_prefs.tab_order_beside)
+	if (main_status.opening_session_files)
+		cur_page = -1; /* last page */
+	else if (file_prefs.tab_order_beside)
+	{
 		cur_page = gtk_notebook_get_current_page(GTK_NOTEBOOK(main_widgets.notebook));
+		if (file_prefs.tab_order_ltr)
+			cur_page++;
+	}
+	else if (file_prefs.tab_order_ltr)
+		cur_page = -1; /* last page */
 	else
-		cur_page = file_prefs.tab_order_ltr ? -2 /* hack: -2 + 1 = -1, last page */ : 0;
-	if (file_prefs.tab_order_ltr)
-		tabnum = gtk_notebook_insert_page_menu(GTK_NOTEBOOK(main_widgets.notebook), vbox,
-			ebox, NULL, cur_page + 1);
-	else
-		tabnum = gtk_notebook_insert_page_menu(GTK_NOTEBOOK(main_widgets.notebook), vbox,
-			ebox, NULL, cur_page);
+		cur_page = 0;
+
+	tabnum = gtk_notebook_insert_page_menu(GTK_NOTEBOOK(main_widgets.notebook), vbox,
+		ebox, NULL, cur_page);
 
 	tab_count_changed();
 

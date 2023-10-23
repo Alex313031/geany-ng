@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.60])
-AC_INIT([Geany], [2.0],
+AC_INIT([Geany], [2.1],
 		[https://github.com/geany/geany/issues])
 AC_CONFIG_SRCDIR([src/geany.h])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -119,6 +119,7 @@ AC_DEFINE_UNQUOTED([GETTEXT_PACKAGE], ["$PACKAGE"], [Gettext package.])
 AM_COND_IF([MINGW],
   [pkgdatadir='${prefix}/data'],
   [pkgdatadir='${datarootdir}/geany'])
+AM_COND_IF([MINGW],[LIBS="$LIBS -liconv"])
 AC_SUBST([GEANY_DATA_DIR], [$(eval echo $(eval echo $pkgdatadir))])
 AC_SUBST([pkgdatadir])
 

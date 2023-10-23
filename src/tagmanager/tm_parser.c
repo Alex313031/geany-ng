@@ -1425,7 +1425,7 @@ const gchar *tm_parser_get_constructor_method(TMParserType lang)
 
 /* determine anonymous tags from tag names only when corresponding
  * ctags information is not available */
-gboolean tm_parser_is_anon_name(TMParserType lang, gchar *name)
+gboolean tm_parser_is_anon_name(TMParserType lang, const gchar *name)
 {
 	guint i;
 	char dummy;
@@ -1444,7 +1444,7 @@ gboolean tm_parser_is_anon_name(TMParserType lang, gchar *name)
 }
 
 
-static gchar *replace_string_if_present(gchar *haystack, gchar *needle, gchar *subst)
+static gchar *replace_string_if_present(gchar *haystack, const gchar *needle, const gchar *subst)
 {
 	if (strstr(haystack, needle))
 	{
@@ -1535,11 +1535,14 @@ gchar *tm_parser_format_variable(TMParserType lang, const gchar *name, const gch
 	{
 		case TM_PARSER_GO:
 			ret = g_strconcat(name_full, " ", type, NULL);
+			break;
 		case TM_PARSER_PASCAL:
 		case TM_PARSER_PYTHON:
 			ret = g_strconcat(name_full, ": ", type, NULL);
+			break;
 		default:
 			ret = g_strconcat(type, " ", name_full, NULL);
+			break;
 	}
 
 	g_free(name_full);
