@@ -23,9 +23,6 @@ foreach dep : deps_in
 	deps_for_pc += ' ' + dep[0] + ' >= ' + dep[1]
 endforeach
 
-dep_mac_integration = dependency('gtk-mac-integration', version: '>= 3.0.1',
-	required: get_option('mac-integration'))
-
 glib = deps[0]
 
 # detect libc
@@ -94,8 +91,6 @@ foreach h : check_headers
 	define = 'HAVE_' + h.underscorify().to_upper()
 	if cc.has_header(h)
 		cdata.set(define, 1)
-	else
-		cdata.set(define, false)
 	endif
 endforeach
 
@@ -104,8 +99,6 @@ foreach f : check_functions
 	ccprefix = '\n'.join([gnu_source ? '#define _GNU_SOURCE' : '', f.get(1)])
 	if cc.has_function(f.get(0), prefix: ccprefix, dependencies: deps)
 		cdata.set(define, 1)
-	else
-		cdata.set(define, false)
 	endif
 endforeach
 
@@ -127,10 +120,8 @@ cdata.set_quoted('PACKAGE_VERSION', meson.project_version())
 cdata.set('GETTEXT_PACKAGE', 'PACKAGE')
 cdata.set('VERSION', meson.project_version())
 cdata.set('ENABLE_NLS', 1)
-if (host_machine.system() == 'windows')
-	cdata.set('HAVE_VTE', false)
-else
-	cdata.set('HAVE_VTE', get_option('vte'))
+if (host_machine.system() != 'windows' and get_option('vte'))
+	cdata.set('HAVE_VTE', 1)
 endif
 cdata.set('HAVE_PLUGINS', get_option('plugins'))
 cdata.set('HAVE_SOCKET', get_option('socket'))
@@ -443,7 +434,7 @@ dep_scintilla = declare_dependency(
 	include_directories: include_directories('scintilla/include')
 )
 
-if cdata.get('HAVE_FNMATCH') == 1
+if cdata.get('HAVE_FNMATCH', 0) == 1
 	dep_fnmatch = dependency('', required: false)
 else
 	# use fnmatch bundled with ctags
@@ -456,7 +447,7 @@ else
 	dep_fnmatch = declare_dependency(link_with: [fnmatch], include_directories: [ifnmatch])
 endif
 
-if cdata.get('HAVE_REGCOMP') == 1
+if cdata.get('HAVE_REGCOMP', 0) == 1
 	dep_regex = dependency('', required: false)
 else
 	# use regcomp bundled with ctags
@@ -741,6 +732,23 @@ if (host_machine.system() == 'windows')
 	endforeach
 endif
 
+osx_src = []
+osx_deps = []
+if host_machine.system() == 'darwin'
+	dep_mac_integration = dependency('gtk-mac-integration', version: '>= 3.0.1',
+		required: get_option('mac-integration'))
+	if dep_mac_integration.found()
+		osx_src += ['src/osx.c', 'src/osx.h']
+		osx_deps += [dep_mac_integration]
+	endif
+endif
+
+vte_src = ['src/vte.c', 'src/vte.h']
+if host_machine.system() == 'windows'
+	# No VTE support on Windows
+	vte_src = []
+endif
+
 install_headers(
 	'plugins/geanyfunctions.h',
 	'plugins/geanyplugin.h',
@@ -855,14 +863,14 @@ libgeany = shared_library('geany',
 	'src/ui_utils.h',
 	'src/utils.c',
 	'src/utils.h',
+	vte_src,
 	gen_src,
 	win_src,
-	dep_mac_integration.found() ? ['src/osx.c', 'src/osx.h'] : [],
-	host_machine.system() == 'windows' ? ['src/win32.c',  'src/win32.h'] : [ 'src/vte.c', 'src/vte.h' ],
+	osx_src,
 	soversion: '0',
 	c_args: geany_cflags + [ '-DG_LOG_DOMAIN="Geany"' ],
 	include_directories: [iscintilla],
-	dependencies: [dep_tagmanager, dep_ctags, dep_scintilla, dep_mac_integration] + deps + win_deps,
+	dependencies: [dep_tagmanager, dep_ctags, dep_scintilla] + deps + win_deps + osx_deps,
 	install: true
 )
 dep_libgeany = declare_dependency(
