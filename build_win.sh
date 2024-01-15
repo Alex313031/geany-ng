@@ -72,11 +72,13 @@ export LDFLAGS="-Wl,-O3 -msse4.1 -s -flto=auto" &&
 export OPT_LEVEL="3" &&
 export RUSTFLAGS="-C opt-level=3 -C target-feature=+sse4.1" &&
 
+mkdir -p ./dist &&
+
 NOCONFIGURE=1 ./autogen.sh &&
 
 ./configure --enable-the-force --prefix=${PWD}/dist &&
 
-make VERBOSE=1 V=1 -j8 &&
+make VERBOSE=1 V=1 -j16 &&
 
 make install
 
@@ -103,11 +105,13 @@ export LDFLAGS="-Wl,-O3 -mavx -maes -s -flto=auto" &&
 export OPT_LEVEL="3" &&
 export RUSTFLAGS="-C opt-level=3 -C target-feature=+avx,+aes" &&
 
+mkdir -p ./dist &&
+
 NOCONFIGURE=1 ./autogen.sh &&
 
 ./configure --enable-the-force --prefix=${PWD}/dist &&
 
-make VERBOSE=1 V=1 -j8 &&
+make VERBOSE=1 V=1 -j16 &&
 
 make install
 

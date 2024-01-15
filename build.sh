@@ -74,7 +74,7 @@ export RUSTFLAGS="-C opt-level=3 -C target-feature=+sse4.1" &&
 
 ./configure --enable-the-force &&
 
-make VERBOSE=1 V=1 -j8 &&
+make VERBOSE=1 V=1 -j16 &&
 
 printf "\n" &&
 printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can now run \`sudo make install\` or \`make install\` to install it.\n" &&
@@ -103,7 +103,7 @@ export RUSTFLAGS="-C opt-level=3 -C target-feature=+avx,+aes" &&
 
 ./configure --enable-the-force &&
 
-make VERBOSE=1 V=1 -j8 &&
+make VERBOSE=1 V=1 -j16 &&
 
 printf "\n" &&
 printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can now run \`sudo make install\` or \`make install\` to install it.\n" &&
