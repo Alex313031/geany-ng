@@ -72,14 +72,16 @@ export LDFLAGS="-Wl,-O3 -msse4.1 -s -flto=auto" &&
 export OPT_LEVEL="3" &&
 export RUSTFLAGS="-C opt-level=3 -C target-feature=+sse4.1" &&
 
-./autogen.sh &&
+NOCONFIGURE=1 ./autogen.sh &&
 
-./configure --enable-the-force &&
+./configure --enable-the-force --prefix=${PWD}/dist &&
 
-make VERBOSE=1 V=1 &&
+make VERBOSE=1 V=1 -j8 &&
+
+make install
 
 printf "\n" &&
-printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can now run \`sudo make install\` or \`make install\` to install it.\n" &&
+printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can find it in \'dist\'.\n" &&
 printf "\n" &&
 tput sgr0
 }
@@ -101,14 +103,16 @@ export LDFLAGS="-Wl,-O3 -mavx -maes -s -flto=auto" &&
 export OPT_LEVEL="3" &&
 export RUSTFLAGS="-C opt-level=3 -C target-feature=+avx,+aes" &&
 
-./autogen.sh &&
+NOCONFIGURE=1 ./autogen.sh &&
 
-./configure --enable-the-force &&
+./configure --enable-the-force --prefix=${PWD}/dist &&
 
-make VERBOSE=1 V=1 &&
+make VERBOSE=1 V=1 -j8 &&
+
+make install
 
 printf "\n" &&
-printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can now run \`sudo make install\` or \`make install\` to install it.\n" &&
+printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can find it in \'dist\'.\n" &&
 printf "\n" &&
 tput sgr0 &&
 

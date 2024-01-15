@@ -37,6 +37,7 @@ Makefile.in
 /data/filedefs/filetypes.python
 /debian
 /depcomp
+/dist/
 /geany.1
 /geany.desktop
 /geany.glade.bak
