@@ -18,7 +18,7 @@ try() { "$@" || die "${RED}Failed $*"; }
 # --help
 displayHelp () {
 	printf "\n" &&
-	printf "${bold}${GRE}Script to build Geany-ng on Linux.${c0}\n" &&
+	printf "${bold}${GRE}Script to build Geany-ng on Windows.${c0}\n" &&
 	printf "${bold}${YEL}Use the --clean flag to run \`make clean\` & \`make distclean\`.${c0}\n" &&
 	printf "${bold}${YEL}Use the --deps flag to install build dependencies.${c0}\n" &&
 	printf "${bold}${YEL}Use the --debug flag to make a debug build.${c0}\n" &&
@@ -32,9 +32,11 @@ esac
 
 installDeps () {
 	printf "\n" &&
-	printf "${bold}${GRE}Installing build dependencies...${c0}\n" &&
+	printf "${bold}${GRE}Installing MSYS2 build dependencies...${c0}\n" &&
 	printf "\n" &&
-	sudo apt install 
+	pacman --needed -Sy bash pacman pacman-mirrors msys2-runtime &&
+	pacman -Syuu &&
+	pacman -S mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-gdb cmake make mingw-w64-x86_64-libtool mingw-w64-x86_64-pkgconf autoconf automake gettext mingw-w64-x86_64-gtk3 mingw-w64-x86_64-python3 mingw-w64-x86_64-python-lxml git rsync wget curl tar dos2unix zip unzip mingw-w64-x86_64-osslsigncode mingw-w64-x86_64-nsis mingw-w64-x86_64-check mingw-w64-x86_64-enchant mingw-w64-x86_64-lua51 mingw-w64-x86_64-gpgme mingw-w64-x86_64-libsoup mingw-w64-x86_64-libgit2 mingw-w64-x86_64-gtkspell3 mingw-w64-x86_64-ctpl-git mingw-w64-x86_64-python-docutils patch ed
 }
 case $1 in
 	--deps) installDeps; exit 0;;
