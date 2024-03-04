@@ -2,7 +2,7 @@
 Name=Hicolor
 Comment=Fallback icon theme
 Hidden=true
-Directories=16x16/actions,16x16/apps,24x24/actions,24x24/apps,32x32/actions,32x32/apps,48x48/actions,48x48/apps,scalable/actions,scalable/apps
+Directories=16x16/actions,16x16/apps,24x24/actions,24x24/apps,32x32/actions,32x32/apps,48x48/actions,48x48/apps,64x64/actions,64x64/apps,scalable/actions,scalable/apps
 
 
 [16x16/actions]
@@ -42,6 +42,16 @@ Type=Threshold
 
 [48x48/apps]
 Size=48
+Context=Applications
+Type=Threshold
+
+[64x64/actions]
+Size=64
+Context=Actions
+Type=Threshold
+
+[64x64/apps]
+Size=64
 Context=Applications
 Type=Threshold
 

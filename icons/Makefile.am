@@ -1,4 +1,4 @@
-SUBDIRS =  16x16 24x24 32x32 48x48 scalable tango
+SUBDIRS =  16x16 24x24 32x32 48x48 64x64 scalable tango
 
 # only install index.theme on Windows
 if MINGW

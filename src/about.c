@@ -170,7 +170,7 @@ static GtkWidget *create_dialog(void)
 	/* configure dialog */
 	gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(main_widgets.window));
 	gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER_ON_PARENT);
-	gtk_window_set_title(GTK_WINDOW(dialog), _("About Geany"));
+	gtk_window_set_title(GTK_WINDOW(dialog), _("About Geany-ng"));
 	gtk_window_set_icon_name(GTK_WINDOW(dialog), "geany");
 	gtk_widget_set_name(dialog, "GeanyDialog");
 	gtk_dialog_add_button(GTK_DIALOG(dialog), GTK_STOCK_CLOSE, GTK_RESPONSE_CLOSE);

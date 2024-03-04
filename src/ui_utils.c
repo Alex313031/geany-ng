@@ -399,7 +399,7 @@ void ui_set_window_title(GeanyDocument *doc)
 		g_string_append(str, project->name);
 		g_string_append(str, "] - ");
 	}
-	g_string_append(str, "Geany");
+	g_string_append(str, "Geany-ng");
 	if (cl_options.new_instance)
 	{
 		g_string_append(str, _(" (new instance)"));

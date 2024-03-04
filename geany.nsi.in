@@ -35,8 +35,8 @@ Unicode true
 !define PRODUCT_NAME "Geany"
 !define PRODUCT_VERSION "@VERSION@"
 !define PRODUCT_VERSION_ID "@VERSION@.0.0"
-!define PRODUCT_PUBLISHER "The Geany developer team"
-!define PRODUCT_WEB_SITE "https://www.geany.org/"
+!define PRODUCT_PUBLISHER "Alex313031"
+!define PRODUCT_WEB_SITE "https://github.com/Alex313031/geany-ng/"
 !define PRODUCT_DIR_REGKEY "Software\Geany"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_EXE "$INSTDIR\bin\Geany.exe"
@@ -63,7 +63,7 @@ ShowUnInstDetails hide
 XPStyle on
 ManifestSupportedOS all
 !ifndef GEANY_INSTALLER_NAME
-!define GEANY_INSTALLER_NAME "geany-${PRODUCT_VERSION}_setup.exe"
+!define GEANY_INSTALLER_NAME "geany-ng_${PRODUCT_VERSION}_win64_setup.exe"
 !endif
 !ifndef GEANY_RELEASE_DIR
 !define GEANY_RELEASE_DIR "geany-${PRODUCT_VERSION}"
@@ -141,7 +141,7 @@ Section "!Program Files" SEC01
 
 	SetOutPath "$INSTDIR\bin"
 	File "${GEANY_RELEASE_DIR}\bin\Geany.exe"
-	File "${GEANY_RELEASE_DIR}\bin\*Geany*.dll"
+	# File "${GEANY_RELEASE_DIR}\bin\*Geany*.dll"
 	# non-GTK dependencies
 	File "${GTK_BUNDLE_DIR}\bin\libgcc_s_seh*.dll"
 	File "${GTK_BUNDLE_DIR}\bin\libstdc++-*.dll"
@@ -195,7 +195,7 @@ Section "Plugins" SEC02
 	SectionIn 1
 	SetOverwrite ifnewer
 	SetOutPath "$INSTDIR\lib\geany"
-	File "${GEANY_RELEASE_DIR}\lib\geany\*.dll"
+	#File "${GEANY_RELEASE_DIR}\lib\geany\*.dll"
 SectionEnd
 
 Section "Language Files" SEC03

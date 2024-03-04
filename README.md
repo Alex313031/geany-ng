@@ -1,4 +1,4 @@
-Geany-ng - A fast and lightweight IDE
+Geany-ng - A fast and lightweight IDE&nbsp;&nbsp;<img src="https://raw.githubusercontent.com/Alex313031/geany-ng/master/icons/geany256.png" width="48">
 ----------------------------------
 
 
@@ -10,6 +10,11 @@ few dependencies from other packages. Another goal was to be as independent
 as possible from a special Desktop Environment like KDE or GNOME. So it
 is using only the GTK+ toolkit and therefore you need only the
 GTK+ runtime libraries to run Geany.
+
+.. image:: doc/images/main_window.png
+  :width: 750
+  :alt: Screenshot of Geany showing the main user interface
+  :target: doc/images/main_window.png
 
 NG
 ------
