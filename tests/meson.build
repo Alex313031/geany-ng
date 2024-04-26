@@ -249,6 +249,7 @@ ctags_tests = files([
 	'ctags/namespace.cpp.tags',
 	'ctags/namespaces2.php.tags',
 	'ctags/namespaces.php.tags',
+	'ctags/nested_anon.c.tags',
 	'ctags/no_terminator.js.tags',
 	'ctags/non-ascii-ident1.php.tags',
 	'ctags/numlib.f90.tags',
@@ -310,6 +311,7 @@ ctags_tests = files([
 	'ctags/simple.lua.tags',
 	'ctags/simple.mak.tags',
 	'ctags/simple.md.tags',
+	'ctags/simple.ml.tags',
 	'ctags/simple.php.tags',
 	'ctags/simple.pl.tags',
 	'ctags/simple.ps1.tags',
@@ -371,3 +373,4 @@ test('ctags/processing-order', runner,
      env: ['top_srcdir='+meson.source_root(), 'top_builddir='+meson.build_root()])
 test('utils', executable('test_utils', 'test_utils.c', dependencies: test_deps))
 test('sidebar', executable('test_sidebar', 'test_sidebar.c', dependencies: test_deps))
+test('encodings', executable('test_encodings', 'test_encodings.c', dependencies: test_deps))

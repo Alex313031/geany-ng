@@ -252,6 +252,7 @@ test_sources = \
 	namespace.cpp					\
 	namespaces2.php					\
 	namespaces.php					\
+	nested_anon.c					\
 	no_terminator.js				\
 	non-ascii-ident1.php			\
 	numlib.f90						\
@@ -313,6 +314,7 @@ test_sources = \
 	simple.lua						\
 	simple.mak						\
 	simple.md						\
+	simple.ml						\
 	simple.php						\
 	simple.pl						\
 	simple.ps1						\
