@@ -2,7 +2,7 @@ test_deps = declare_dependency(compile_args: geany_cflags + [ '-DG_LOG_DOMAIN="G
                                dependencies: [deps, dep_libgeany],
                                include_directories: '..')
 
-ctags_tests = files([
+ctags_tests = [
 	'ctags/1795612.js.tags',
 	'ctags/1850914.js.tags',
 	'ctags/1878155.js.tags',
@@ -128,6 +128,7 @@ ctags_tests = files([
 	'ctags/case_sensitivity.php.tags',
 	'ctags/char-selector.f90.tags',
 	'ctags/classes.php.tags',
+	'ctags/class.ps1.tags',
 	'ctags/cobol/helloworld.cbl.tags',
 	'ctags/cobol/helloworld2.cbl.tags',
 	'ctags/cobol/levels.cbl.tags',
@@ -165,6 +166,7 @@ ctags_tests = files([
 	'ctags/enum.c.tags',
 	'ctags/enum.f90.tags',
 	'ctags/enum.java.tags',
+	'ctags/enum.ps1.tags',
 	'ctags/enumerators.f90.tags',
 	'ctags/events.cs.tags',
 	'ctags/extern_variable.h.tags',
@@ -246,6 +248,7 @@ ctags_tests = files([
 	'ctags/mode.php.tags',
 	'ctags/moniker.x68.asm.tags',
 	'ctags/namelist.f.tags',
+	'ctags/namespace.bas.tags',
 	'ctags/namespace.cpp.tags',
 	'ctags/namespaces2.php.tags',
 	'ctags/namespaces.php.tags',
@@ -354,12 +357,12 @@ ctags_tests = files([
 	'ctags/vhdl-process.vhd.tags',
 	'ctags/vhdl-type.vhd.tags',
 	'ctags/whitespaces.php.tags'
-])
+]
 
 runner = find_program('ctags/runner.sh')
 foreach t : ctags_tests
-	test('@0@'.format(t), runner,
-	     args: [join_paths(meson.build_root(), 'geany'), t],
+	test(t, runner,
+	     args: [join_paths(meson.build_root(), 'geany'), files(t)],
 	     env: ['top_srcdir='+meson.source_root(), 'top_builddir=' + meson.build_root()])
 endforeach
 
