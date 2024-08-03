@@ -13,6 +13,7 @@ deps.mak
 Makefile
 Makefile.in
 .dirstamp
+configure~
 
 #-----------------------------------------------------------------------
 # / (root)
