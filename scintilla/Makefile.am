@@ -20,6 +20,7 @@ lexilla/lexers/LexAU3.cxx              \
 lexilla/lexers/LexBash.cxx             \
 lexilla/lexers/LexBasic.cxx            \
 lexilla/lexers/LexBatch.cxx            \
+lexilla/lexers/LexCIL.cxx              \
 lexilla/lexers/LexCOBOL.cxx            \
 lexilla/lexers/LexCPP.cxx              \
 lexilla/lexers/LexCSS.cxx              \
@@ -59,6 +60,7 @@ lexilla/lexers/LexTCL.cxx              \
 lexilla/lexers/LexTxt2tags.cxx         \
 lexilla/lexers/LexVHDL.cxx             \
 lexilla/lexers/LexVerilog.cxx          \
+lexilla/lexers/LexVisualProlog.cxx     \
 lexilla/lexers/LexYAML.cxx
 
 LEXLIB_SRCS =                          \
