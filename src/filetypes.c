@@ -177,7 +177,7 @@ static void init_builtin_filetypes(void)
 	FT_INIT( CMAKE,      NONE,         "CMake",            NULL,                      SOURCE_FILE, SCRIPT   );
 	FT_INIT( NSIS,       NSIS,         "NSIS",             NULL,                      SOURCE_FILE, SCRIPT   );
 	FT_INIT( ADA,        ADA,          "Ada",              NULL,                      SOURCE_FILE, COMPILED );
-	FT_INIT( FORTH,      NONE,         "Forth",            NULL,                      SOURCE_FILE, SCRIPT   );
+	FT_INIT( FORTH,      FORTH,        "Forth",            NULL,                      SOURCE_FILE, SCRIPT   );
 	FT_INIT( ASCIIDOC,   ASCIIDOC,     "Asciidoc",         NULL,                      SOURCE_FILE, MARKUP   );
 	FT_INIT( ABAQUS,     ABAQUS,       "Abaqus",           NULL,                      SOURCE_FILE, SCRIPT   );
 	FT_INIT( BATCH,      BATCH,        "Batch",            NULL,                      SCRIPT,      SCRIPT   );
@@ -193,6 +193,7 @@ static void init_builtin_filetypes(void)
 	FT_INIT( CIL,        NONE,         "CIL",              NULL,                      SOURCE_FILE, COMPILED );
 	FT_INIT( PROLOG,     NONE,         "Prolog",           NULL,                      SOURCE_FILE, COMPILED );
 	FT_INIT( NIM,        NONE,         "Nim",              NULL,                      SOURCE_FILE, COMPILED );
+	FT_INIT( ZIG,        NONE,         "Zig",              NULL,                      SOURCE_FILE, COMPILED );
 }
 
 
@@ -634,6 +635,10 @@ static GeanyFiletype *find_shebang(const gchar *utf8_filename, const gchar *line
 		if (g_str_has_prefix(tmp, "env "))
 		{	/* skip "env" and read the following interpreter */
 			basename_interpreter += 4;
+		}
+		else if (g_str_has_prefix(tmp, "busybox "))
+		{
+			basename_interpreter += 8;
 		}
 
 		for (i = 0; ! ft && i < G_N_ELEMENTS(intepreter_map); i++)
