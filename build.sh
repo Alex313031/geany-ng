@@ -22,6 +22,7 @@ displayHelp () {
 	printf "${bold}${YEL}Use the --clean flag to run \`make clean\` & \`make distclean\`.${c0}\n" &&
 	printf "${bold}${YEL}Use the --deps flag to install build dependencies.${c0}\n" &&
 	printf "${bold}${YEL}Use the --debug flag to make a debug build.${c0}\n" &&
+	printf "${bold}${YEL}Use the --sse3 flag to make an SSE3 build.${c0}\n" &&
 	printf "${bold}${YEL}Use the --sse4 flag to make an SSE4.1 build.${c0}\n" &&
 	printf "${bold}${YEL}Use the --help flag to show this help.${c0}\n" &&
 	printf "\n"
@@ -53,6 +54,36 @@ makeClean () {
 }
 case $1 in
 	--clean) makeClean; exit 0;;
+esac
+
+buildSSE3 () {
+printf "\n" &&
+printf "${YEL}Building Geany-ng (SSE3 Version)..." &&
+printf "${CYA}\n" &&
+
+# Build geany-ng for SSE3
+export CFLAGS="-g0 -s -O3 -msse3 -flto=auto -Wno-deprecated-declarations -DNDEBUG" &&
+export CXXFLAGS="-g0 -s -O3 -msse3 -flto=auto -DNDEBUG" &&
+export CPPFLAGS="-g0 -s -O3 -msse3 -flto=auto -DNDEBUG" &&
+export LFLAGS="-Wl,-O3 -msse3 -s -flto=auto" &&
+export LDLIBS="-Wl,-O3 -msse3 -s -flto=auto" &&
+export LDFLAGS="-Wl,-O3 -msse3 -msse4.1 -s -flto=auto" &&
+export OPT_LEVEL="3" &&
+export RUSTFLAGS="-C opt-level=3 -C target-feature=+sse4.1" &&
+
+./autogen.sh &&
+
+./configure --enable-the-force &&
+
+make VERBOSE=1 V=1 -j4 &&
+
+printf "\n" &&
+printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can now run \`sudo make install\` or \`make install\` to install it." &&
+printf "\n" &&
+tput sgr0
+}
+case $1 in
+	--sse3) buildSSE3; exit 0;;
 esac
 
 buildSSE41 () {
