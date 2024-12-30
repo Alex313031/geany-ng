@@ -59,6 +59,7 @@ extern LexerModule lmCPPNoCase;
 extern LexerModule lmCsound;
 extern LexerModule lmCss;
 extern LexerModule lmD;
+extern LexerModule lmDart;
 extern LexerModule lmDataflex;
 extern LexerModule lmDiff;
 extern LexerModule lmDMAP;
@@ -107,6 +108,7 @@ extern LexerModule lmMSSQL;
 extern LexerModule lmMySQL;
 extern LexerModule lmNim;
 extern LexerModule lmNimrod;
+extern LexerModule lmNix;
 extern LexerModule lmNncrontab;
 extern LexerModule lmNsis;
 extern LexerModule lmNull;
@@ -186,6 +188,7 @@ static void AddGeanyLexers()
 		&lmCPP,
 		&lmCss,
 		&lmD,
+		&lmDart,
 		&lmDiff,
 		&lmErlang,
 		&lmF77,
@@ -202,6 +205,7 @@ static void AddGeanyLexers()
 		&lmMake,
 		&lmMarkdown,
 		&lmNim,
+		&lmNix,
 		&lmNsis,
 		&lmNull,
 		&lmOctave,
@@ -273,6 +277,7 @@ void AddEachLexer() {
 		&lmCsound,
 		&lmCss,
 		&lmD,
+		&lmDart,
 		&lmDataflex,
 		&lmDiff,
 		&lmDMAP,
@@ -321,6 +326,7 @@ void AddEachLexer() {
 		&lmMySQL,
 		&lmNim,
 		&lmNimrod,
+		&lmNix,
 		&lmNncrontab,
 		&lmNsis,
 		&lmNull,

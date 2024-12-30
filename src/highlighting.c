@@ -1014,6 +1014,7 @@ void highlighting_init_styles(guint filetype_idx, GKeyFile *config, GKeyFile *co
 		init_styleset_case(CONF);
 		init_styleset_case(CSS);
 		init_styleset_case(D);
+		init_styleset_case(DART);
 		init_styleset_case(DIFF);
 		init_styleset_case(LISP);
 		init_styleset_case(ERLANG);
@@ -1036,6 +1037,7 @@ void highlighting_init_styles(guint filetype_idx, GKeyFile *config, GKeyFile *co
 		init_styleset_case(MATLAB);
 		init_styleset_case(MARKDOWN);
 		init_styleset_case(NIM);
+		init_styleset_case(NIX);
 		init_styleset_case(NSIS);
 		init_styleset_case(OBJECTIVEC);
 		init_styleset_case(PASCAL);
@@ -1111,6 +1113,7 @@ void highlighting_set_styles(ScintillaObject *sci, GeanyFiletype *ft)
 		styleset_case(CONF);
 		styleset_case(CSS);
 		styleset_case(D);
+		styleset_case(DART);
 		styleset_case(DIFF);
 		styleset_case(LISP);
 		styleset_case(ERLANG);
@@ -1133,6 +1136,7 @@ void highlighting_set_styles(ScintillaObject *sci, GeanyFiletype *ft)
 		styleset_case(MARKDOWN);
 		styleset_case(MATLAB);
 		styleset_case(NIM);
+		styleset_case(NIX);
 		styleset_case(NSIS);
 		styleset_case(OBJECTIVEC);
 		styleset_case(PASCAL);
@@ -1693,6 +1697,21 @@ gboolean highlighting_is_string_style(gint lexer, gint style)
 				style == SCE_ZIG_MULTISTRING ||
 				style == SCE_ZIG_CHARACTER ||
 				style == SCE_ZIG_ESCAPECHAR);
+
+		case SCLEX_DART:
+			return (style == SCE_DART_STRING_SQ ||
+				style == SCE_DART_STRING_DQ ||
+				style == SCE_DART_TRIPLE_STRING_SQ ||
+				style == SCE_DART_TRIPLE_STRING_DQ ||
+				style == SCE_DART_RAWSTRING_SQ ||
+				style == SCE_DART_RAWSTRING_DQ ||
+				style == SCE_DART_TRIPLE_RAWSTRING_SQ ||
+				style == SCE_DART_TRIPLE_RAWSTRING_DQ);
+
+		case SCLEX_NIX:
+			return (style == SCE_NIX_STRING ||
+				style == SCE_NIX_STRING_MULTILINE ||
+				style == SCE_NIX_ESCAPECHAR);
 	}
 	return FALSE;
 }
@@ -1950,6 +1969,16 @@ gboolean highlighting_is_comment_style(gint lexer, gint style)
 			return (style == SCE_ZIG_COMMENTLINE ||
 				style == SCE_ZIG_COMMENTLINEDOC ||
 				style == SCE_ZIG_COMMENTLINETOP);
+
+		case SCLEX_DART:
+			return (style == SCE_DART_COMMENTLINE ||
+				style == SCE_DART_COMMENTLINEDOC ||
+				style == SCE_DART_COMMENTBLOCK ||
+				style == SCE_DART_COMMENTBLOCKDOC);
+
+		case SCLEX_NIX:
+			return (style == SCE_NIX_COMMENTLINE ||
+				style == SCE_NIX_COMMENTBLOCK);
 	}
 	return FALSE;
 }

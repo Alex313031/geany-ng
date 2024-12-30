@@ -28,6 +28,7 @@ filetypes_dist = \
 	filedefs/filetypes.CUDA.conf \
 	filedefs/filetypes.Cython.conf \
 	filedefs/filetypes.d \
+	filedefs/filetypes.dart \
 	filedefs/filetypes.diff \
 	filedefs/filetypes.docbook \
 	filedefs/filetypes.Dockerfile.conf \
@@ -56,6 +57,7 @@ filetypes_dist = \
 	filedefs/filetypes.makefile \
 	filedefs/filetypes.markdown \
 	filedefs/filetypes.matlab \
+	filedefs/filetypes.nix \
 	filedefs/filetypes.Meson.conf \
 	filedefs/filetypes.nim \
 	filedefs/filetypes.nsis \
@@ -76,6 +78,7 @@ filetypes_dist = \
 	filedefs/filetypes.smalltalk \
 	filedefs/filetypes.sql \
 	filedefs/filetypes.Swift.conf \
+	filedefs/filetypes.SystemVerilog.conf \
 	filedefs/filetypes.TypeScript.conf \
 	filedefs/filetypes.tcl \
 	filedefs/filetypes.txt2tags \
