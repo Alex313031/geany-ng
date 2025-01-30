@@ -889,6 +889,7 @@ static const HLStyle highlighting_styles_HTML[] =
 	{ SCE_HJ_SYMBOLS,				"jscript_symbols",			FALSE	 },
 	{ SCE_HJ_STRINGEOL,				"jscript_stringeol",		FALSE	 },
 	{ SCE_HJ_REGEX,					"jscript_regex",			FALSE	 },
+	{ SCE_HJ_TEMPLATELITERAL,		"jscript_templateliteral",	FALSE	 },
 
 	/* for HB, VBScript?, use the same styles as for JavaScript */
 	{ SCE_HB_START,					"jscript_start",			FALSE	 },
@@ -924,6 +925,7 @@ static const HLStyle highlighting_styles_HTML[] =
 	{ SCE_HJA_SYMBOLS,				"jscript_symbols",			FALSE	 },
 	{ SCE_HJA_STRINGEOL,			"jscript_stringeol",		FALSE	 },
 	{ SCE_HJA_REGEX,				"jscript_regex",			FALSE	 },
+	{ SCE_HJA_TEMPLATELITERAL,		"jscript_templateliteral",	FALSE	 },
 
 	/* embedded Python */
 	{ SCE_HP_START,					"jscript_start",			FALSE	 },
@@ -1681,8 +1683,10 @@ static const HLStyle highlighting_styles_RUST[] =
 	{ SCE_RUST_MACRO,				"macro",					FALSE },
 	{ SCE_RUST_LEXERROR,			"lexerror",					FALSE },
 	{ SCE_RUST_BYTESTRING,			"bytestring",				FALSE },
-	{ SCE_RUST_BYTESTRINGR,			"bytestringr",				FALSE },
-	{ SCE_RUST_BYTECHARACTER,		"bytecharacter",			FALSE }
+	{ SCE_RUST_BYTESTRINGR,			"bytestringraw",			FALSE },
+	{ SCE_RUST_BYTECHARACTER,		"bytecharacter",			FALSE },
+	{ SCE_RUST_CSTRING,				"cstring",					FALSE },
+	{ SCE_RUST_CSTRINGR,			"cstringraw",				FALSE }
 };
 static const HLKeyword highlighting_keywords_RUST[] =
 {
@@ -1822,6 +1826,33 @@ static const HLKeyword highlighting_keywords_TCL[] =
 	{ 4, "expand",		FALSE }
 };
 #define highlighting_properties_TCL		EMPTY_PROPERTIES
+
+
+/* TOML */
+#define highlighting_lexer_TOML			SCLEX_TOML
+static const HLStyle highlighting_styles_TOML[] =
+{
+	{ SCE_TOML_DEFAULT,				"default",			FALSE },
+	{ SCE_TOML_COMMENT,				"comment",			FALSE },
+	{ SCE_TOML_IDENTIFIER,			"identifier",		FALSE },
+	{ SCE_TOML_KEYWORD,				"keyword",			FALSE },
+	{ SCE_TOML_NUMBER,				"number",			FALSE },
+	{ SCE_TOML_TABLE,				"table",			FALSE },
+	{ SCE_TOML_KEY,					"key",				FALSE },
+	{ SCE_TOML_ERROR,				"error",			FALSE },
+	{ SCE_TOML_OPERATOR,			"operator",			FALSE },
+	{ SCE_TOML_STRING_SQ,			"stringsq",		FALSE },
+	{ SCE_TOML_STRING_DQ,			"stringdq",		FALSE },
+	{ SCE_TOML_TRIPLE_STRING_SQ,	"triplestringsq",	FALSE },
+	{ SCE_TOML_TRIPLE_STRING_DQ,	"triplestringdq",	FALSE },
+	{ SCE_TOML_ESCAPECHAR,			"escapechar",		FALSE },
+	{ SCE_TOML_DATETIME,			"datetime",			FALSE },
+};
+static const HLKeyword highlighting_keywords_TOML[] =
+{
+	{ 0, "keywords",	FALSE }
+};
+#define highlighting_properties_TOML	EMPTY_PROPERTIES
 
 
 /* Txt2Tags */

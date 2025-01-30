@@ -11,8 +11,8 @@ cxx = meson.get_compiler('cpp')
 prefix = get_option('prefix')
 
 deps_in = [
-	['glib-2.0',    '2.32'],
-	['gmodule-2.0', '2.32'],
+	['glib-2.0',    '2.56'],
+	['gmodule-2.0', '2.56'],
 	['gtk+-3.0',    '3.24']
 ]
 
@@ -201,7 +201,7 @@ def_cflags = basic_cflags + [
 # we're using lots of deprecated stuff with gtk3 (often because there is no proper alternative!)
 	'-Wno-deprecated-declarations',
 	'-DGDK_DISABLE_DEPRECATION_WARNINGS',
-	'-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_32',
+	'-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_56',
 	'-DGEANY_PREFIX="@0@"'.format(get_option('prefix')),
 	'-DGEANY_DOCDIR="@0@"'.format(join_paths(prefix, get_option('datadir'), 'doc'))
 ]
@@ -290,6 +290,7 @@ lexilla = static_library('lexilla',
 	'scintilla/lexilla/lexers/LexSmalltalk.cxx',
 	'scintilla/lexilla/lexers/LexSQL.cxx',
 	'scintilla/lexilla/lexers/LexTCL.cxx',
+	'scintilla/lexilla/lexers/LexTOML.cxx',
 	'scintilla/lexilla/lexers/LexTxt2tags.cxx',
 	'scintilla/lexilla/lexers/LexVerilog.cxx',
 	'scintilla/lexilla/lexers/LexVHDL.cxx',
@@ -305,6 +306,8 @@ lexilla = static_library('lexilla',
 	'scintilla/lexilla/lexlib/CharacterSet.h',
 	'scintilla/lexilla/lexlib/DefaultLexer.cxx',
 	'scintilla/lexilla/lexlib/DefaultLexer.h',
+	'scintilla/lexilla/lexlib/InList.cxx',
+	'scintilla/lexilla/lexlib/InList.h',
 	'scintilla/lexilla/lexlib/LexAccessor.cxx',
 	'scintilla/lexilla/lexlib/LexAccessor.h',
 	'scintilla/lexilla/lexlib/LexerBase.cxx',
@@ -421,6 +424,8 @@ scintilla = static_library('scintilla',
 	'scintilla/src/SplitVector.h',
 	'scintilla/src/Style.cxx',
 	'scintilla/src/Style.h',
+	'scintilla/src/UndoHistory.cxx',
+	'scintilla/src/UndoHistory.h',
 	'scintilla/src/UniConversion.cxx',
 	'scintilla/src/UniConversion.h',
 	'scintilla/src/UniqueString.cxx',
@@ -601,6 +606,7 @@ ctags = static_library('ctags',
 	'ctags/main/xtag_p.h',
 	'ctags/optlib/forth.c',
 	'ctags/optlib/meson.c',
+	'ctags/optlib/scss.c',
 	'ctags/parsers/abaqus.c',
 	'ctags/parsers/abc.c',
 	'ctags/parsers/ada.c',

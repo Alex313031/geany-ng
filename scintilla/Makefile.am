@@ -60,6 +60,7 @@ lexilla/lexers/LexRust.cxx             \
 lexilla/lexers/LexSmalltalk.cxx        \
 lexilla/lexers/LexSQL.cxx              \
 lexilla/lexers/LexTCL.cxx              \
+lexilla/lexers/LexTOML.cxx             \
 lexilla/lexers/LexTxt2tags.cxx         \
 lexilla/lexers/LexVHDL.cxx             \
 lexilla/lexers/LexVerilog.cxx          \
@@ -79,6 +80,8 @@ lexilla/lexlib/CharacterSet.cxx        \
 lexilla/lexlib/CharacterSet.h          \
 lexilla/lexlib/DefaultLexer.cxx        \
 lexilla/lexlib/DefaultLexer.h          \
+lexilla/lexlib/InList.cxx              \
+lexilla/lexlib/InList.h                \
 lexilla/lexlib/LexAccessor.cxx         \
 lexilla/lexlib/LexAccessor.h           \
 lexilla/lexlib/LexerBase.cxx           \
@@ -182,6 +185,8 @@ src/SparseVector.h                     \
 src/SplitVector.h                      \
 src/Style.cxx                          \
 src/Style.h                            \
+src/UndoHistory.cxx                    \
+src/UndoHistory.h                      \
 src/UniConversion.cxx                  \
 src/UniConversion.h                    \
 src/UniqueString.cxx                   \
