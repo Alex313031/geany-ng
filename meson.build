@@ -71,7 +71,6 @@ check_functions = [
 	['memcpy',  '#include <string.h>'],
 	['mkstemp', '#include <stdlib.h>'],
 	['realpath', '#include <limits.h>\n#include <stdlib.h>'],
-	['regcomp', '#include <regex.h>'],
 	['socket', '#include <sys/socket.h>'],
 	# man page says strings.h but we include only string.h and it works
 	['strcasecmp', '#include <string.h>'],
@@ -86,6 +85,11 @@ check_functions = [
 	['wcscoll', '#include <wchar.h>'],
 	['g_strv_equal', '#include <glib.h>']
 ]
+
+# Using builtin regex on macOS for performance reasons
+if (host_machine.system() != 'darwin')
+	check_functions += [['regcomp', '#include <regex.h>']]
+endif
 
 foreach h : check_headers
 	define = 'HAVE_' + h.underscorify().to_upper()
@@ -132,8 +136,8 @@ else
 	cdata.set('GEANY_DATA_DIR', join_paths(prefix, get_option('datadir'), 'geany'))
 	cdata.set('GEANY_DOC_DIR', join_paths(prefix, get_option('datadir'), 'doc', 'geany'))
 endif
-cdata.set('top_srcdir', meson.source_root())
-cdata.set('top_builddir', meson.build_root())
+cdata.set('top_srcdir', meson.project_source_root())
+cdata.set('top_builddir', meson.project_build_root())
 
 # for geany.pc (adapted from GTK+)
 pcconf = cdata
@@ -607,6 +611,7 @@ ctags = static_library('ctags',
 	'ctags/optlib/forth.c',
 	'ctags/optlib/meson.c',
 	'ctags/optlib/scss.c',
+	'ctags/optlib/terraform.c',
 	'ctags/parsers/abaqus.c',
 	'ctags/parsers/abc.c',
 	'ctags/parsers/ada.c',
@@ -919,7 +924,7 @@ executable('geany',
 	link_with: libgeany,
 	c_args: geany_cflags + [ '-DG_LOG_DOMAIN="Geany"' ],
 	dependencies: deps,
-	build_rpath: meson.build_root(),
+	build_rpath: meson.project_build_root(),
 	install_rpath: '$ORIGIN/../' + get_option('libdir'),
 	install: true,
 	win_subsystem: 'windows',

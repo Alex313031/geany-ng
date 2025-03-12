@@ -203,9 +203,11 @@ static void kb_tree_view_change_button_clicked_cb(GtkWidget *button, KbData *kbd
 			gtk_widget_show_all(dialog);
 			if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT)
 			{
+				GtkTreeIter child_iter;
 				const gchar *new_text = gtk_label_get_text(GTK_LABEL(accel_label));
 
-				kb_change_iter_shortcut(kbdata, &iter, new_text);
+				gtk_tree_model_filter_convert_iter_to_child_iter(GTK_TREE_MODEL_FILTER(model), &child_iter, &iter);
+				kb_change_iter_shortcut(kbdata, &child_iter, new_text);
 			}
 			gtk_widget_destroy(dialog);
 
@@ -590,6 +592,7 @@ static void prefs_init_dialog(void)
 
 	widget = ui_lookup_widget(ui_widgets.prefs_dialog, "check_line_end");
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), editor_prefs.show_line_endings);
+	on_check_line_end_toggled(GTK_TOGGLE_BUTTON(widget), NULL);
 
 	widget = ui_lookup_widget(ui_widgets.prefs_dialog, "check_line_endings_only_when_differ");
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget),
@@ -1403,13 +1406,17 @@ static void kb_cell_edited_cb(GtkCellRendererText *cellrenderertext,
 {
 	if (path != NULL && new_text != NULL)
 	{
+		GtkTreeModel *filter_model = gtk_tree_view_get_model(kbdata->tree);
 		GtkTreeIter iter;
+		GtkTreeIter child_iter;
 
-		gtk_tree_model_get_iter_from_string(GTK_TREE_MODEL(kbdata->store), &iter, path);
-		if (gtk_tree_model_iter_has_child(GTK_TREE_MODEL(kbdata->store), &iter))
+		gtk_tree_model_get_iter_from_string(filter_model, &iter, path);
+		if (gtk_tree_model_iter_has_child(filter_model, &iter))
 			return;	/* ignore group items */
 
-		kb_change_iter_shortcut(kbdata, &iter, new_text);
+		gtk_tree_model_filter_convert_iter_to_child_iter(GTK_TREE_MODEL_FILTER(filter_model),
+				&child_iter, &iter);
+		kb_change_iter_shortcut(kbdata, &child_iter, new_text);
 	}
 }
 
@@ -1751,7 +1758,6 @@ void prefs_show_dialog(void)
 		ui_widgets.prefs_dialog = create_prefs_dialog();
 		gtk_widget_set_name(ui_widgets.prefs_dialog, "GeanyPrefsDialog");
 		gtk_window_set_transient_for(GTK_WINDOW(ui_widgets.prefs_dialog), GTK_WINDOW(main_widgets.window));
-		gtk_widget_set_size_request(ui_widgets.prefs_dialog, 600, -1);
 
 		/* init the file encoding combo boxes */
 		{
