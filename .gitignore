@@ -36,6 +36,7 @@ configure~
 /config.status
 /config.sub
 /configure
+/configure~
 /data/filedefs/filetypes.python
 /debian
 /depcomp
