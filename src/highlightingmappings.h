@@ -30,7 +30,7 @@
 
 G_BEGIN_DECLS
 
-/* contains all filtypes informations in the form of:
+/* contains all filetypes information in the form of:
  *  - highlighting_lexer_LANG:		the SCI lexer
  *  - highlighting_styles_LANG:		SCI style/named style mappings.  The first
  * 									item is also used for the default style.
@@ -472,7 +472,22 @@ static const HLKeyword highlighting_keywords_CSS[] =
 
 /* Cobol */
 #define highlighting_lexer_COBOL		SCLEX_COBOL
-#define highlighting_styles_COBOL		highlighting_styles_C
+static const HLStyle highlighting_styles_COBOL[] =
+{
+	{ SCE_COBOL_DEFAULT,		"default",			FALSE },
+	{ SCE_COBOL_COMMENT,		"comment",			FALSE },
+	{ SCE_COBOL_COMMENTLINE,	"commentline",		FALSE },
+	{ SCE_COBOL_COMMENTDOC,		"commentdoc",		FALSE },
+	{ SCE_COBOL_NUMBER,			"number",			FALSE },
+	{ SCE_COBOL_WORD,			"word",				FALSE },
+	{ SCE_COBOL_WORD2,			"word2",			FALSE },
+	{ SCE_COBOL_STRING,			"string",			FALSE },
+	{ SCE_COBOL_CHARACTER,		"character",		FALSE },
+	{ SCE_COBOL_WORD3,			"word3",			FALSE },
+	{ SCE_COBOL_PREPROCESSOR,	"preprocessor",		FALSE },
+	{ SCE_COBOL_OPERATOR,		"operator",			FALSE },
+	{ SCE_COBOL_IDENTIFIER,		"identifier",		FALSE }
+};
 static const HLKeyword highlighting_keywords_COBOL[] =
 {
 	{ 0, "primary",				FALSE },
@@ -569,6 +584,7 @@ static const HLStyle highlighting_styles_DART[] =
 	{ SCE_DART_KW_SECONDARY,		"kwsecondary",			FALSE },
 	{ SCE_DART_KW_TERTIARY,			"kwtertiary",			FALSE },
 	{ SCE_DART_KW_TYPE,				"kwtype",				FALSE },
+	{ SCE_DART_STRINGEOL,			"stringeol",			FALSE },
 };
 static const HLKeyword highlighting_keywords_DART[] =
 {
@@ -1255,6 +1271,7 @@ static const HLStyle highlighting_styles_NIX[] =
 	{ SCE_NIX_KEYWORD2,				"keyword2",				FALSE },
 	{ SCE_NIX_KEYWORD3,				"keyword3",				FALSE },
 	{ SCE_NIX_KEYWORD4,				"keyword4",				FALSE },
+	{ SCE_NIX_STRINGEOL,			"stringeol",			FALSE },
 };
 static const HLKeyword highlighting_keywords_NIX[] =
 {
@@ -1841,12 +1858,13 @@ static const HLStyle highlighting_styles_TOML[] =
 	{ SCE_TOML_KEY,					"key",				FALSE },
 	{ SCE_TOML_ERROR,				"error",			FALSE },
 	{ SCE_TOML_OPERATOR,			"operator",			FALSE },
-	{ SCE_TOML_STRING_SQ,			"stringsq",		FALSE },
-	{ SCE_TOML_STRING_DQ,			"stringdq",		FALSE },
+	{ SCE_TOML_STRING_SQ,			"stringsq",			FALSE },
+	{ SCE_TOML_STRING_DQ,			"stringdq",			FALSE },
 	{ SCE_TOML_TRIPLE_STRING_SQ,	"triplestringsq",	FALSE },
 	{ SCE_TOML_TRIPLE_STRING_DQ,	"triplestringdq",	FALSE },
 	{ SCE_TOML_ESCAPECHAR,			"escapechar",		FALSE },
 	{ SCE_TOML_DATETIME,			"datetime",			FALSE },
+	{ SCE_TOML_STRINGEOL,			"stringeol",		FALSE },
 };
 static const HLKeyword highlighting_keywords_TOML[] =
 {
@@ -2011,7 +2029,8 @@ static const HLStyle highlighting_styles_ZIG[] =
 	{ SCE_ZIG_KW_SECONDARY,			"kw_secondary",			FALSE },
 	{ SCE_ZIG_KW_TERTIARY,			"kw_tertiary",			FALSE },
 	{ SCE_ZIG_KW_TYPE,				"kw_type",				FALSE },
-	{ SCE_ZIG_IDENTIFIER_STRING,	"identifer_string",		FALSE }
+	{ SCE_ZIG_IDENTIFIER_STRING,	"identifer_string",		FALSE },
+	{ SCE_ZIG_STRINGEOL,			"stringeol",			FALSE },
 };
 static const HLKeyword highlighting_keywords_ZIG[] =
 {

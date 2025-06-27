@@ -265,7 +265,7 @@ static void backupcopy_document_save_cb(GObject *obj, GeanyDocument *doc, gpoint
 	if ((dst = g_fopen(locale_filename_dst, "wb")) == NULL)
 #else
 	/* Use g_open() on non-Windows to set file permissions to 600 atomically.
-	 * On Windows, seting file permissions would require specific Windows API. */
+	 * On Windows, setting file permissions would require specific Windows API. */
 	fd_dst = g_open(locale_filename_dst, O_CREAT | O_WRONLY, S_IWUSR | S_IRUSR);
 	if (fd_dst == -1 || (dst = fdopen(fd_dst, "w")) == NULL)
 #endif
@@ -668,7 +668,7 @@ static gboolean load_all_persistent_docs_idle(gpointer data)
 
 static gboolean reload_persistent_docs_on_session_change_idle(gpointer data)
 {
-	/* remember and re-open document from originaly focused tab
+	/* remember and re-open document from originally focused tab
 	(after we mess selected tab with re-loaded untitled doc files) */
 	GeanyDocument *current_doc = document_get_current();
 
@@ -1540,7 +1540,6 @@ GtkWidget *plugin_configure(GtkDialog *dialog)
 		persistent_radio = gtk_radio_button_new_with_mnemonic_from_widget(
 			GTK_RADIO_BUTTON(disabled_radio), _("Persistent Untitled Documents"));
 		pref_widgets.untitled_doc_persistent_radio = persistent_radio;
-		gtk_label_set_mnemonic_widget(GTK_LABEL(label), persistent_radio);
 		gtk_button_set_focus_on_click(GTK_BUTTON(persistent_radio), FALSE);
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(persistent_radio), enable_persistent_docs);
 		gtk_container_add(GTK_CONTAINER(inner_vbox), persistent_radio);

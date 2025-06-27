@@ -134,6 +134,8 @@ ctags_tests = [
 	'ctags/cobol/levels.cbl.tags',
 	'ctags/cobol/quoted-program-id.cbl.tags',
 	'ctags/cobol/simple.cbl.tags',
+	'ctags/combined.html.tags',
+	'ctags/combined.php.tags',
 	'ctags/common.f.tags',
 	'ctags/complex-return.js.tags',
 	'ctags/continuation.f90.tags',
@@ -362,7 +364,8 @@ ctags_tests = [
 	'ctags/vhdl-port.vhd.tags',
 	'ctags/vhdl-process.vhd.tags',
 	'ctags/vhdl-type.vhd.tags',
-	'ctags/whitespaces.php.tags'
+	'ctags/whitespaces.php.tags',
+	'ctags/wp-guest.php.tags'
 ]
 
 runner = find_program('ctags/runner.sh')

@@ -134,6 +134,8 @@ test_sources = \
 	cobol/levels.cbl				\
 	cobol/quoted-program-id.cbl		\
 	cobol/simple.cbl				\
+	combined.html					\
+	combined.php					\
 	common.f						\
 	complex-return.js				\
 	continuation.f90				\
@@ -366,6 +368,7 @@ test_sources = \
 	vhdl-process.vhd				\
 	vhdl-type.vhd					\
 	whitespaces.php					\
+	wp-guest.php					\
 	$(NULL)
 test_results = $(test_sources:=.tags)
 

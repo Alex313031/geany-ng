@@ -16,6 +16,7 @@
 #include "promise_p.h"
 #include "ptrarray.h"
 #include "debug.h"
+#include "read.h"
 #include "read_p.h"
 #include "trashbox.h"
 #include "xtag.h"
@@ -61,6 +62,26 @@ static void attachPromiseModifier (int promise,
 								   promiseDestroyAttachedData destroyData,
 								   void *data);
 
+
+static bool havePromise (const struct promise *p)
+{
+	for (int i = 0; i < promise_count; i++)
+	{
+		struct promise *q = promises + i;
+		if (p->lang == q->lang &&
+			p->startLine == q->startLine && p->startCharOffset == q->startCharOffset)
+		{
+			error (WARNING, "redundant promise when parsing %s: %s start(line: %lu, offset: %ld, srcline: %lu), end(line: %lu, offset: %ld)",
+			       getInputFileName (),
+			       q->lang != LANG_IGNORE? getLanguageName(q->lang): "*",
+			       q->startLine, q->startCharOffset, q->sourceLineOffset,
+			       q->endLine, q->endCharOffset);
+
+			return true;
+		}
+	}
+	return false;
+}
 
 int  makePromise   (const char *parser,
 		    unsigned long startLine, long startCharOffset,
@@ -115,6 +136,9 @@ int  makePromise   (const char *parser,
 	p->endCharOffset = endCharOffset;
 	p->sourceLineOffset = sourceLineOffset;
 	p->modifiers = NULL;
+
+	if (havePromise (p))
+		return -1;
 
 	r = promise_count;
 	promise_count++;
