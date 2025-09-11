@@ -1,4 +1,4 @@
-.. |(version)| replace:: 2.1
+.. |(version)| replace:: 2.2.0
 .. -*- reStructuredText -*-
 
 =======
@@ -14,7 +14,7 @@
           Frank Lanitz,
           Colomban Wendling,
           Matthew Brush
-:Date: 2023-10-19
+:Date: 2025-07-06
 :Version: |(version)|
 
 Copyright © 2005 The Geany contributors
@@ -3861,8 +3861,14 @@ Action                          Default shortcut          Description
 =============================== ========================= ==================================================
 Fullscreen                      F11  (C)                  Switches to fullscreen mode.
 
-Toggle Messages Window                                    Toggles the message window (status and compiler
-                                                          messages) on and off.
+Toggle Menubar                                            Shows or hides the menubar. In addition to the
+                                                          assigned keybinding, the menubar can be shown
+                                                          temporarily using F10 and then shown permanently
+                                                          using the corresponding item from the View menu
+                                                          or the editor context menu.
+
+Toggle Messages Window                                    Shows or hides the message window
+                                                          (status and compiler messages).
 
 Toggle Sidebar                                            Shows or hides the sidebar.
 
