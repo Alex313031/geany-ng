@@ -283,7 +283,7 @@ download_and_extract_sort() {
 	echo "Download and unpack 'sort'"
 	# add sort to the bin directory
 	unxutils_archive="unxutilsupdates.zip"
-	wget --no-verbose -O ${unxutils_archive} ${UNX_UTILS_URL}
+	wget -O ${unxutils_archive} ${UNX_UTILS_URL}
 	unzip ${unxutils_archive} sort.exe -d bin/
 	rm ${unxutils_archive}
 }
@@ -291,7 +291,7 @@ download_and_extract_sort() {
 download_and_extract_gtk_theme() {
 	echo "Download and unpack GTK theme 'Prof-Gnome'"
 	geany_osx_archive="geany_osx.zip"
-	wget --no-verbose -O ${geany_osx_archive} ${GTK_THEME_URL}
+	wget -O ${geany_osx_archive} ${GTK_THEME_URL}
 	unzip ${geany_osx_archive} "geany-osx-master/Prof-Gnome/**" "geany-osx-master/prof_gnome_windows_changes.patch"
 	mkdir -p share/themes/
 	mv geany-osx-master/Prof-Gnome share/themes/

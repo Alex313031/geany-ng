@@ -34,9 +34,27 @@ installDeps () {
 	printf "\n" &&
 	printf "${bold}${GRE}Installing MSYS2 build dependencies...${c0}" &&
 	printf "\n" &&
-	pacman --needed -Sy bash pacman pacman-mirrors msys2-runtime &&
-	pacman -Syuu &&
-	pacman -S mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-gdb cmake make mingw-w64-x86_64-libtool mingw-w64-x86_64-pkgconf autoconf automake gettext mingw-w64-x86_64-gtk3 mingw-w64-x86_64-python3 mingw-w64-x86_64-python-lxml git rsync wget curl tar dos2unix zip unzip mingw-w64-x86_64-osslsigncode mingw-w64-x86_64-nsis mingw-w64-x86_64-check mingw-w64-x86_64-enchant mingw-w64-x86_64-lua51 mingw-w64-x86_64-gpgme mingw-w64-x86_64-libsoup mingw-w64-x86_64-libgit2 mingw-w64-x86_64-gtkspell3 mingw-w64-x86_64-ctpl-git mingw-w64-x86_64-python-docutils patch ed
+	pacman -Syyuu --needed bash pacman pacman-mirrors msys2-runtime &&
+	pacman -S --needed mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-gdb cmake make mingw-w64-x86_64-libtool \
+            mingw-w64-x86_64-pkgconf autoconf automake gettext mingw-w64-x86_64-gtk3 mingw-w64-x86_64-python3 \
+            mingw-w64-x86_64-python-lxml git rsync wget curl tar dos2unix zip unzip mingw-w64-x86_64-osslsigncode \
+            mingw-w64-x86_64-nsis mingw-w64-x86_64-check mingw-w64-x86_64-enchant mingw-w64-x86_64-lua51 \
+            mingw-w64-x86_64-gpgme mingw-w64-x86_64-libsoup mingw-w64-x86_64-libgit2 mingw-w64-x86_64-gtkspell3 \
+            mingw-w64-x86_64-ctpl-git mingw-w64-x86_64-python-docutils patch ed \
+            ${MINGW_PACKAGE_PREFIX}-gcc \
+            ${MINGW_PACKAGE_PREFIX}-autotools \
+            ${MINGW_PACKAGE_PREFIX}-gtk3 \
+            ${MINGW_PACKAGE_PREFIX}-python-docutils \
+            ${MINGW_PACKAGE_PREFIX}-check \
+            ${MINGW_PACKAGE_PREFIX}-cppcheck \
+            ${MINGW_PACKAGE_PREFIX}-ctpl-git \
+            ${MINGW_PACKAGE_PREFIX}-enchant \
+            ${MINGW_PACKAGE_PREFIX}-gpgme \
+            ${MINGW_PACKAGE_PREFIX}-gtkspell3 \
+            ${MINGW_PACKAGE_PREFIX}-libgit2 \
+            ${MINGW_PACKAGE_PREFIX}-libsoup3 \
+            ${MINGW_PACKAGE_PREFIX}-lua51 \
+            ${MINGW_PACKAGE_PREFIX}-nsis
 }
 case $1 in
 	--deps) installDeps; exit 0;;
@@ -76,6 +94,8 @@ mkdir -p ./dist &&
 
 NOCONFIGURE=1 ./autogen.sh &&
 
+export lt_cv_deplibs_check_method=${lt_cv_deplibs_check_method='pass_all'} &&
+
 ./configure --enable-the-force --prefix=${PWD}/dist &&
 
 make VERBOSE=1 V=1 -j4 &&
@@ -108,6 +128,8 @@ export RUSTFLAGS="-C opt-level=3 -C target-feature=+avx,+aes" &&
 mkdir -p ./dist &&
 
 NOCONFIGURE=1 ./autogen.sh &&
+
+export lt_cv_deplibs_check_method=${lt_cv_deplibs_check_method='pass_all'} &&
 
 ./configure --enable-the-force --prefix=${PWD}/dist &&
 
