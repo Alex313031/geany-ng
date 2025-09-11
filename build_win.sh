@@ -18,10 +18,9 @@ try() { "$@" || die "${RED}Failed $*"; }
 # --help
 displayHelp () {
 	printf "\n" &&
-	printf "${bold}${GRE}Script to build Geany-ng on Windows.${c0}\n" &&
+	printf "${bold}${GRE}Script to build a Geany-ng installer on Windows.${c0}\n" &&
 	printf "${bold}${YEL}Use the --clean flag to run \`make clean\` & \`make distclean\`.${c0}\n" &&
 	printf "${bold}${YEL}Use the --deps flag to install build dependencies.${c0}\n" &&
-	printf "${bold}${YEL}Use the --debug flag to make a debug build.${c0}\n" &&
 	printf "${bold}${YEL}Use the --sse4 flag to make an SSE4.1 build.${c0}\n" &&
 	printf "${bold}${YEL}Use the --help flag to show this help.${c0}\n" &&
 	printf "\n"
@@ -80,7 +79,7 @@ printf "\n" &&
 printf "${YEL}Building Geany-ng (SSE4.1 Version)..." &&
 printf "${CYA}\n" &&
 
-# Build geany-ng for SSE4.1
+# Build geany-ng installer for SSE4.1
 export CFLAGS="-g0 -s -O3 -msse4.1 -flto=auto -DNDEBUG" &&
 export CXXFLAGS="-g0 -s -O3 -msse4.1 -flto=auto -DNDEBUG" &&
 export CPPFLAGS="-g0 -s -O3 -msse4.1 -flto=auto -DNDEBUG" &&
@@ -90,20 +89,36 @@ export LDFLAGS="-Wl,-O3 -msse4.1 -s -flto=auto" &&
 export OPT_LEVEL="3" &&
 export RUSTFLAGS="-C opt-level=3 -C target-feature=+sse4.1" &&
 
-mkdir -p ./dist &&
+mkdir -p ~/geany-ng/geany_build/bundle/geany-gtk &&
+cd ~/geany-ng/geany_build/bundle/geany-gtk &&
+bash ~/geany-ng/scripts/gtk-bundle-from-msys2.sh -3 &&
 
+export DESTINATON=~/geany-ng/geany_build &&
+
+cd ~/geany-ng &&
+make clean
+make distclean
+VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac) &&
 NOCONFIGURE=1 ./autogen.sh &&
-
 export lt_cv_deplibs_check_method=${lt_cv_deplibs_check_method='pass_all'} &&
+mkdir -p dist && cd dist &&
+../configure --enable-the-force --prefix=${DESTINATON}/build/geany --disable-silent-rules &&
 
-./configure --enable-the-force --prefix=${PWD}/dist &&
+make VERBOSE=1 V=1 -j16 &&
+make install &&
 
-make VERBOSE=1 V=1 -j4 &&
-
-make install
+rm -fr $DESTINATON/release/geany-orig &&
+mkdir -p $DESTINATON/release/geany-orig &&
+rsync -a --delete ${DESTINATON}/build/geany/ $DESTINATON/release/geany-orig &&
 
 printf "\n" &&
-printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can find it in \'dist\'." &&
+printf "${YEL}Building .exe Installer..." &&
+printf "${CYA}\n" &&
+
+python3 ~/geany-ng/geany-release.py $VERSION &&
+
+printf "\n" &&
+printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can find it in ${DESTINATON}/" &&
 printf "\n" &&
 tput sgr0
 }
@@ -115,7 +130,7 @@ printf "\n" &&
 printf "${YEL}Building Geany-ng..." &&
 printf "${CYA}\n" &&
 
-# Build geany-ng for AVX
+# Build geany-ng installer for AVX
 export CFLAGS="-g0 -s -O3 -mavx -maes -flto=auto -DNDEBUG" &&
 export CXXFLAGS="-g0 -s -O3 -mavx -maes -flto=auto -DNDEBUG" &&
 export CPPFLAGS="-g0 -s -O3 -mavx -maes -flto=auto -DNDEBUG" &&
@@ -125,20 +140,36 @@ export LDFLAGS="-Wl,-O3 -mavx -maes -s -flto=auto" &&
 export OPT_LEVEL="3" &&
 export RUSTFLAGS="-C opt-level=3 -C target-feature=+avx,+aes" &&
 
-mkdir -p ./dist &&
+mkdir -p ~/geany-ng/geany_build/bundle/geany-gtk &&
+cd ~/geany-ng/geany_build/bundle/geany-gtk &&
+bash ~/geany-ng/scripts/gtk-bundle-from-msys2.sh -3 &&
 
+export DESTINATON=~/geany-ng/geany_build &&
+
+cd ~/geany-ng &&
+make clean
+make distclean
+VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac) &&
 NOCONFIGURE=1 ./autogen.sh &&
-
 export lt_cv_deplibs_check_method=${lt_cv_deplibs_check_method='pass_all'} &&
+mkdir -p dist && cd dist &&
+../configure --enable-the-force --prefix=${DESTINATON}/build/geany --disable-silent-rules &&
 
-./configure --enable-the-force --prefix=${PWD}/dist &&
+make VERBOSE=1 V=1 -j16 &&
+make install &&
 
-make VERBOSE=1 V=1 -j4 &&
-
-make install
+rm -fr $DESTINATON/release/geany-orig &&
+mkdir -p $DESTINATON/release/geany-orig &&
+rsync -a --delete ${DESTINATON}/build/geany/ $DESTINATON/release/geany-orig &&
 
 printf "\n" &&
-printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can find it in \'dist\'." &&
+printf "${YEL}Building .exe Installer..." &&
+printf "${CYA}\n" &&
+
+python3 ~/geany-ng/geany-release.py $VERSION &&
+
+printf "\n" &&
+printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can find it in ${DESTINATON}/" &&
 printf "\n" &&
 tput sgr0 &&
 
