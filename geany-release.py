@@ -79,7 +79,7 @@ def make_release(version_number):
     convert_text_files(*text_files)
     # create installer
     shutil.copy(join(BUILD_DIR, 'geany.nsi'), SOURCE_DIR)
-    INSTALLER_NAME = join(BASE_DIR, f'geany-{version_number}_setup.exe')
+    INSTALLER_NAME = join(BASE_DIR, f'geany-ng_{version_number}_win64_setup.exe')
     run_command(
         'makensis',
         '/WX',
