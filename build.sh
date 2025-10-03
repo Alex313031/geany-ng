@@ -71,7 +71,7 @@ export LDFLAGS="-Wl,-O3 -msse3 -msse4.1 -s -flto=auto" &&
 export OPT_LEVEL="3" &&
 export RUSTFLAGS="-C opt-level=3 -C target-feature=+sse4.1" &&
 
-./autogen.sh &&
+NOCONFIGURE=1 ./autogen.sh &&
 
 ./configure --enable-the-force &&
 
@@ -101,7 +101,7 @@ export LDFLAGS="-Wl,-O3 -msse4.1 -s -flto=auto" &&
 export OPT_LEVEL="3" &&
 export RUSTFLAGS="-C opt-level=3 -C target-feature=+sse4.1" &&
 
-./autogen.sh &&
+NOCONFIGURE=1 ./autogen.sh &&
 
 ./configure --enable-the-force &&
 
@@ -130,7 +130,7 @@ export LDFLAGS="-Wl,-O3 -mavx -maes -s -flto=auto" &&
 export OPT_LEVEL="3" &&
 export RUSTFLAGS="-C opt-level=3 -C target-feature=+avx,+aes" &&
 
-./autogen.sh &&
+NOCONFIGURE=1 ./autogen.sh &&
 
 ./configure --enable-the-force &&
 
