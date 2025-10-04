@@ -16,9 +16,10 @@ GTK+ runtime libraries to run Geany.
   :alt: Screenshot of Geany showing the main user interface
   :target: doc/images/main_window.png
 
-NG
+NG ?
 ------
 These are optimized builds, built with `-g0 -s -O3 -mavx -maes -DNDEBUG`, as well as the main icon and build icon changed.
+I have also changed the defaults for some settings to what I find reasonable. (LOL)
 
 Features
 --------
