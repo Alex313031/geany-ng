@@ -262,11 +262,11 @@ static void init_pref_groups(void)
 	stash_group_add_toggle_button(group, &editor_prefs.backspace_unindent,
 		"backspace_unindent", TRUE, "check_backspace_unindent");
 	stash_group_add_spin_button_integer(group, &editor_prefs.indentation->width,
-		"pref_editor_tab_width", 4, "spin_indent_width");
+		"pref_editor_tab_width", 2, "spin_indent_width");
 	stash_group_add_combo_box(group, (gint*)(void*)&editor_prefs.indentation->auto_indent_mode,
-		"indent_mode", GEANY_AUTOINDENT_CURRENTCHARS, "combo_auto_indent_mode");
+		"indent_mode", GEANY_AUTOINDENT_BASIC, "combo_auto_indent_mode");
 	stash_group_add_radio_buttons(group, (gint*)(void*)&editor_prefs.indentation->type,
-		"indent_type", GEANY_INDENT_TYPE_TABS,
+		"indent_type", GEANY_INDENT_TYPE_SPACES,
 		"radio_indent_spaces", GEANY_INDENT_TYPE_SPACES,
 		"radio_indent_tabs", GEANY_INDENT_TYPE_TABS,
 		"radio_indent_both", GEANY_INDENT_TYPE_BOTH,
@@ -869,7 +869,7 @@ static void load_dialog_prefs(GKeyFile *config)
 
 	/* compatibility with Geany 0.21 */
 	{
-		gboolean suppress_search_dialogs = utils_get_setting_boolean(config, PACKAGE, "pref_main_suppress_search_dialogs", FALSE);
+		gboolean suppress_search_dialogs = utils_get_setting_boolean(config, PACKAGE, "pref_main_suppress_search_dialogs", TRUE);
 
 		if (!g_key_file_has_key(config, "search", "pref_search_always_wrap", NULL))
 			g_key_file_set_boolean(config, "search", "pref_search_always_wrap", suppress_search_dialogs);
@@ -913,7 +913,7 @@ static void load_dialog_prefs(GKeyFile *config)
 		editor_prefs.long_line_enabled = FALSE;
 	}
 	editor_prefs.long_line_color = utils_get_setting_string(config, PACKAGE, "long_line_color", "#C2EBC2");
-	editor_prefs.long_line_column = utils_get_setting_integer(config, PACKAGE, "long_line_column", 72);
+	editor_prefs.long_line_column = utils_get_setting_integer(config, PACKAGE, "long_line_column", 80);
 	editor_prefs.symbolcompletion_min_chars = utils_get_setting_integer(config, PACKAGE, "symbolcompletion_min_chars", GEANY_MIN_SYMBOLLIST_CHARS);
 	editor_prefs.symbolcompletion_max_height = utils_get_setting_integer(config, PACKAGE, "symbolcompletion_max_height", GEANY_MAX_SYMBOLLIST_HEIGHT);
 	editor_prefs.line_wrapping = utils_get_setting_boolean(config, PACKAGE, "line_wrapping", FALSE); /* default is off for better performance */
@@ -923,18 +923,18 @@ static void load_dialog_prefs(GKeyFile *config)
 	editor_prefs.show_line_endings = utils_get_setting_boolean(config, PACKAGE, "show_line_endings", FALSE);
 	editor_prefs.show_line_endings_only_when_differ = utils_get_setting_boolean(config, PACKAGE, "show_line_endings_only_when_differ", FALSE);
 	editor_prefs.scroll_stop_at_last_line = utils_get_setting_boolean(config, PACKAGE, "scroll_stop_at_last_line", TRUE);
-	editor_prefs.auto_close_xml_tags = utils_get_setting_boolean(config, PACKAGE, "auto_close_xml_tags", TRUE);
-	editor_prefs.complete_snippets = utils_get_setting_boolean(config, PACKAGE, "complete_snippets", TRUE);
-	editor_prefs.auto_complete_symbols = utils_get_setting_boolean(config, PACKAGE, "auto_complete_symbols", TRUE);
-	editor_prefs.folding = utils_get_setting_boolean(config, PACKAGE, "use_folding", TRUE);
+	editor_prefs.auto_close_xml_tags = utils_get_setting_boolean(config, PACKAGE, "auto_close_xml_tags", FALSE);
+	editor_prefs.complete_snippets = utils_get_setting_boolean(config, PACKAGE, "complete_snippets", FALSE);
+	editor_prefs.auto_complete_symbols = utils_get_setting_boolean(config, PACKAGE, "auto_complete_symbols", FALSE);
+	editor_prefs.folding = utils_get_setting_boolean(config, PACKAGE, "use_folding", FALSE);
 	editor_prefs.unfold_all_children = utils_get_setting_boolean(config, PACKAGE, "unfold_all_children", FALSE);
 	editor_prefs.show_markers_margin = utils_get_setting_boolean(config, PACKAGE, "show_markers_margin", TRUE);
 	editor_prefs.show_linenumber_margin = utils_get_setting_boolean(config, PACKAGE, "show_linenumber_margin", TRUE);
 	editor_prefs.disable_dnd = utils_get_setting_boolean(config, PACKAGE, "pref_editor_disable_dnd", FALSE);
 	editor_prefs.smart_home_key = utils_get_setting_boolean(config, PACKAGE, "pref_editor_smart_home_key", TRUE);
 	editor_prefs.newline_strip = utils_get_setting_boolean(config, PACKAGE, "pref_editor_newline_strip", FALSE);
-	editor_prefs.line_break_column = utils_get_setting_integer(config, PACKAGE, "line_break_column", 72);
-	editor_prefs.auto_continue_multiline = utils_get_setting_boolean(config, PACKAGE, "auto_continue_multiline", TRUE);
+	editor_prefs.line_break_column = utils_get_setting_integer(config, PACKAGE, "line_break_column", 80);
+	editor_prefs.auto_continue_multiline = utils_get_setting_boolean(config, PACKAGE, "auto_continue_multiline", FALSE);
 	editor_prefs.comment_toggle_mark = utils_get_setting_string(config, PACKAGE, "comment_toggle_mark", GEANY_TOGGLE_MARK);
 	editor_prefs.autoclose_chars = utils_get_setting_integer(config, PACKAGE, "autoclose_chars", 0);
 
@@ -1110,7 +1110,7 @@ static void load_dialog_prefs(GKeyFile *config)
 static void load_ui_prefs(GKeyFile *config)
 {
 	ui_prefs.menubar_visible = utils_get_setting_boolean(config, PACKAGE, "menubar_visible", TRUE);
-	ui_prefs.sidebar_visible = utils_get_setting_boolean(config, PACKAGE, "sidebar_visible", TRUE);
+	ui_prefs.sidebar_visible = utils_get_setting_boolean(config, PACKAGE, "sidebar_visible", FALSE);
 	ui_prefs.msgwindow_visible = utils_get_setting_boolean(config, PACKAGE, "msgwindow_visible", TRUE);
 	ui_prefs.fullscreen = utils_get_setting_boolean(config, PACKAGE, "fullscreen", FALSE);
 	ui_prefs.symbols_group_by_type = utils_get_setting_boolean(config, PACKAGE, "symbols_group_by_type", TRUE);

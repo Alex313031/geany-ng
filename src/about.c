@@ -39,7 +39,7 @@
 
 #include <gtk/gtk.h>
 
-#define HEADER "<span size=\"larger\" weight=\"bold\">Geany %s</span>"
+#define HEADER "<span size=\"larger\" weight=\"bold\">Geany-ng %s</span>"
 #define INFO "<span size=\"larger\" weight=\"bold\">%s</span>"
 #define CODENAME "<span weight=\"bold\">\"" GEANY_CODENAME "\"</span>"
 #define BUILDDATE "<span size=\"smaller\">%s</span>"
@@ -304,6 +304,14 @@ static GtkWidget *create_dialog(void)
 	gtk_table_attach(GTK_TABLE(table), label, 0, 2, row, row + 1, GTK_FILL, 0, 0, 5);
 	gtk_label_set_use_markup(GTK_LABEL(label), TRUE);
 	gtk_misc_set_alignment(GTK_MISC(label), 0, 0);
+	row++;
+
+	g_snprintf(buffer, sizeof(buffer), "Alexander Frick - %s", _("developer"));
+	ROW(buffer, row, 0, 0, 0, 1);
+	row++;
+	ROW("&lt;alex313031@gmail.com&gt;", row, 0, 0, 0, 1);
+	row++;
+	ROW("", row, 0, 0, 0, 0);
 	row++;
 
 	g_snprintf(buffer, sizeof(buffer), "Colomban Wendling - %s", _("maintainer"));
