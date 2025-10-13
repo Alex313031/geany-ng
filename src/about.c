@@ -214,7 +214,7 @@ static GtkWidget *create_dialog(void)
 	gtk_label_set_justify(GTK_LABEL(label_info), GTK_JUSTIFY_CENTER);
 	gtk_label_set_selectable(GTK_LABEL(label_info), TRUE);
 	gtk_label_set_use_markup(GTK_LABEL(label_info), TRUE);
-	g_snprintf(buffer, sizeof(buffer), INFO, _("A fast and lightweight IDE"));
+	g_snprintf(buffer, sizeof(buffer), INFO, _("The flyweight IDE"));
 	gtk_label_set_markup(GTK_LABEL(label_info), buffer);
 	gtk_misc_set_padding(GTK_MISC(label_info), 2, 11);
 	gtk_widget_show(label_info);
@@ -250,7 +250,7 @@ static GtkWidget *create_dialog(void)
 	gtk_label_set_selectable(GTK_LABEL(runtime_label), TRUE);
 	gtk_label_set_use_markup(GTK_LABEL(runtime_label), TRUE);
 	g_snprintf(buffer2, sizeof(buffer2),
-		_("Using GTK+ v%u.%u.%u and GLib v%u.%u.%u runtime libraries"),
+		_("Using GTK3+ v%u.%u.%u and GLib v%u.%u.%u runtime libraries"),
 		gtk_major_version, gtk_minor_version, gtk_micro_version,
 		glib_major_version, glib_minor_version, glib_micro_version);
 	g_snprintf(buffer, sizeof(buffer), RUNTIME, buffer2);
