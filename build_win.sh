@@ -33,7 +33,7 @@ installDeps () {
 	printf "\n" &&
 	printf "${bold}${GRE}Installing MSYS2 build dependencies...${c0}" &&
 	printf "\n" &&
-	#pacman -S --needed bash pacman pacman-mirrors msys2-runtime &&
+	#pacman -Syyuu --needed bash pacman pacman-mirrors msys2-runtime &&
 	pacman -S --needed mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-gdb cmake make mingw-w64-x86_64-libtool \
             mingw-w64-x86_64-pkgconf autoconf automake gettext mingw-w64-x86_64-gtk3 mingw-w64-x86_64-python3 \
             mingw-w64-x86_64-python-lxml git rsync wget curl tar dos2unix zip unzip mingw-w64-x86_64-osslsigncode \
@@ -91,7 +91,7 @@ export RUSTFLAGS="-C opt-level=3 -C target-feature=+sse4.1" &&
 
 mkdir -p ~/geany-ng/geany_build/bundle/geany-gtk &&
 cd ~/geany-ng/geany_build/bundle/geany-gtk &&
-bash ~/geany-ng/scripts/gtk-bundle-from-msys2.sh -3 &&
+bash ~/geany-ng/scripts/gtk-bundle-from-msys2.sh -c -3 &&
 
 export DESTINATON=~/geany-ng/geany_build &&
 
@@ -142,7 +142,7 @@ export RUSTFLAGS="-C opt-level=3 -C target-feature=+avx,+aes" &&
 
 mkdir -p ~/geany-ng/geany_build/bundle/geany-gtk &&
 cd ~/geany-ng/geany_build/bundle/geany-gtk &&
-bash ~/geany-ng/scripts/gtk-bundle-from-msys2.sh -3 &&
+bash ~/geany-ng/scripts/gtk-bundle-from-msys2.sh -c -3 &&
 
 export DESTINATON=~/geany-ng/geany_build &&
 
