@@ -33,7 +33,7 @@ installDeps () {
 	printf "\n" &&
 	printf "${bold}${GRE}Installing MSYS2 build dependencies...${c0}" &&
 	printf "\n" &&
-	pacman -Syyuu --needed bash pacman pacman-mirrors msys2-runtime &&
+	#pacman -S --needed bash pacman pacman-mirrors msys2-runtime &&
 	pacman -S --needed mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-gdb cmake make mingw-w64-x86_64-libtool \
             mingw-w64-x86_64-pkgconf autoconf automake gettext mingw-w64-x86_64-gtk3 mingw-w64-x86_64-python3 \
             mingw-w64-x86_64-python-lxml git rsync wget curl tar dos2unix zip unzip mingw-w64-x86_64-osslsigncode \
