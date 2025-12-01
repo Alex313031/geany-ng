@@ -155,7 +155,7 @@ mkdir -p _build && cd _build &&
 ../configure --disable-rpath --enable-the-force --prefix=${DESTINATON}/build --disable-silent-rules &&
 
 cd ~/geany-ng/_build &&
-make VERBOSE=1 V=1 -j4 &&
+make VERBOSE=1 V=1 -j4
 cd ~/geany-ng/_build &&
 make &&
 
@@ -203,7 +203,7 @@ mkdir -p _build && cd _build &&
 ../configure --disable-rpath --enable-the-force --prefix=${DESTINATON}/build --disable-silent-rules &&
 
 cd ~/geany-ng/_build &&
-make VERBOSE=1 V=1 -j4 &&
+make VERBOSE=1 V=1 -j4
 cd ~/geany-ng/_build &&
 make &&
 

@@ -27,9 +27,10 @@
 #endif
 
 /* Need Windows XP for SHGetFolderPathAndSubDirW */
-#define _WIN32_WINNT 0x0501
+#define WINVER 0x0601
+#define _WIN32_WINNT 0x0601
 /* Needed for SHGFP_TYPE */
-#define _WIN32_IE 0x0500
+#define _WIN32_IE 0x0800
 
 #include "win32.h"
 
