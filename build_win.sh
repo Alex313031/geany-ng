@@ -35,7 +35,6 @@ installDeps () {
 	printf "\n" &&
 	printf "${bold}${GRE}Installing MSYS2 build dependencies...${c0}" &&
 	printf "\n" &&
-	#pacman -Syyuu --needed bash pacman pacman-mirrors msys2-runtime git patch rsync unzip dos2unix &&
 	pacman -S git patch rsync wget curl tar dos2unix zip unzip ed autoconf automake gettext make cmake \
             ${MINGW_PACKAGE_PREFIX}-gcc \
             ${MINGW_PACKAGE_PREFIX}-autotools \
@@ -58,7 +57,49 @@ installDeps () {
             ${MINGW_PACKAGE_PREFIX}-libtool \
             ${MINGW_PACKAGE_PREFIX}-lua51 \
             ${MINGW_PACKAGE_PREFIX}-nsis \
-            ${MINGW_PACKAGE_PREFIX}-osslsigncode
+            ${MINGW_PACKAGE_PREFIX}-osslsigncode &&
+  pacman -S \
+            ${MINGW_PACKAGE_PREFIX}-adwaita-icon-theme \
+            ${MINGW_PACKAGE_PREFIX}-atk \
+            ${MINGW_PACKAGE_PREFIX}-brotli \
+            ${MINGW_PACKAGE_PREFIX}-bzip2 \
+            ${MINGW_PACKAGE_PREFIX}-cairo \
+            ${MINGW_PACKAGE_PREFIX}-expat \
+            ${MINGW_PACKAGE_PREFIX}-fontconfig \
+            ${MINGW_PACKAGE_PREFIX}-freetype \
+            ${MINGW_PACKAGE_PREFIX}-fribidi \
+            ${MINGW_PACKAGE_PREFIX}-gcc-libs \
+            ${MINGW_PACKAGE_PREFIX}-gdk-pixbuf2 \
+            ${MINGW_PACKAGE_PREFIX}-gettext-runtime \
+            ${MINGW_PACKAGE_PREFIX}-glib2 \
+            ${MINGW_PACKAGE_PREFIX}-graphite2 \
+            ${MINGW_PACKAGE_PREFIX}-grep \
+            ${MINGW_PACKAGE_PREFIX}-gtk3 \
+            ${MINGW_PACKAGE_PREFIX}-gtk-update-icon-cache \
+            ${MINGW_PACKAGE_PREFIX}-harfbuzz \
+            ${MINGW_PACKAGE_PREFIX}-hicolor-icon-theme \
+            ${MINGW_PACKAGE_PREFIX}-jbigkit \
+            ${MINGW_PACKAGE_PREFIX}-lerc \
+            ${MINGW_PACKAGE_PREFIX}-libdatrie \
+            ${MINGW_PACKAGE_PREFIX}-libdeflate \
+            ${MINGW_PACKAGE_PREFIX}-libepoxy \
+            ${MINGW_PACKAGE_PREFIX}-libffi \
+            ${MINGW_PACKAGE_PREFIX}-libiconv \
+            ${MINGW_PACKAGE_PREFIX}-libjpeg-turbo \
+            ${MINGW_PACKAGE_PREFIX}-libpng \
+            ${MINGW_PACKAGE_PREFIX}-librsvg \
+            ${MINGW_PACKAGE_PREFIX}-libthai \
+            ${MINGW_PACKAGE_PREFIX}-libtiff \
+            ${MINGW_PACKAGE_PREFIX}-libwebp \
+            ${MINGW_PACKAGE_PREFIX}-libwinpthread-git \
+            ${MINGW_PACKAGE_PREFIX}-libxml2 \
+            ${MINGW_PACKAGE_PREFIX}-pango \
+            ${MINGW_PACKAGE_PREFIX}-pcre2 \
+            ${MINGW_PACKAGE_PREFIX}-pixman \
+            ${MINGW_PACKAGE_PREFIX}-shared-mime-info \
+            ${MINGW_PACKAGE_PREFIX}-xz \
+            ${MINGW_PACKAGE_PREFIX}-zlib \
+            ${MINGW_PACKAGE_PREFIX}-zstd
 }
 case $1 in
 	--deps) installDeps; exit 0;;
