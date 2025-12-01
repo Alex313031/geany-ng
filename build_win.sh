@@ -123,7 +123,7 @@ esac
 downloadBundle() {
 mkdir -p ~/geany-ng/geany_build/bundle/geany-gtk &&
 cd ~/geany-ng/geany_build/bundle/geany-gtk &&
-bash ~/geany-ng/scripts/gtk-bundle-from-msys2.sh -c -z -3
+bash ~/geany-ng/scripts/gtk-bundle-from-msys2.sh -c -3
 }
 case $1 in
 	--gtk) buildDebug; exit 0;;
@@ -151,19 +151,18 @@ make distclean
 VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac) &&
 NOCONFIGURE=1 ./autogen.sh &&
 export lt_cv_deplibs_check_method=${lt_cv_deplibs_check_method='pass_all'} &&
-mkdir -p dist && cd dist &&
-../configure --disable-rpath --enable-the-force --prefix=${DESTINATON}/build/geany --disable-silent-rules &&
+mkdir -p _build && cd _build &&
+../configure --disable-rpath --enable-the-force --prefix=${DESTINATON}/build --disable-silent-rules &&
 
+cd ~/geany-ng/_build &&
 make VERBOSE=1 V=1 -j4 &&
+cd ~/geany-ng/_build &&
+make &&
 
 # Shouldn't have to do this, IDK why MinGW makes src/geany.exe incorrect one without .res applied
 cp -f -v src/.libs/geany.exe src/geany.exe &&
 
 make install &&
-
-rm -fr $DESTINATON/release/geany-orig &&
-mkdir -p $DESTINATON/release/geany-orig &&
-rsync -a --delete ${DESTINATON}/build/geany/ $DESTINATON/release/geany-orig &&
 
 printf "\n" &&
 printf "${YEL}Building .exe Installer..." &&
@@ -200,10 +199,13 @@ make distclean
 VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac) &&
 NOCONFIGURE=1 ./autogen.sh &&
 export lt_cv_deplibs_check_method=${lt_cv_deplibs_check_method='pass_all'} &&
-mkdir -p dist && cd dist &&
-../configure --disable-rpath --enable-the-force --prefix=${DESTINATON}/build/geany --disable-silent-rules &&
+mkdir -p _build && cd _build &&
+../configure --disable-rpath --enable-the-force --prefix=${DESTINATON}/build --disable-silent-rules &&
 
+cd ~/geany-ng/_build &&
 make VERBOSE=1 V=1 -j4 &&
+cd ~/geany-ng/_build &&
+make &&
 
 # Shouldn't have to do this, IDK why MinGW makes src/geany.exe incorrect one without .res applied
 cp -f -v src/.libs/geany.exe src/geany.exe &&
@@ -220,7 +222,7 @@ case $1 in
 esac
 
 printf "\n" &&
-printf "${YEL}Building Geany-ng..." &&
+printf "${YEL}Building Geany-ng (AVX)..." &&
 printf "${CYA}\n" &&
 
 # Build geany-ng installer for AVX
@@ -240,19 +242,18 @@ make distclean
 VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac) &&
 NOCONFIGURE=1 ./autogen.sh &&
 export lt_cv_deplibs_check_method=${lt_cv_deplibs_check_method='pass_all'} &&
-mkdir -p dist && cd dist &&
-../configure --disable-rpath --enable-the-force --prefix=${DESTINATON}/build/geany --disable-silent-rules &&
+mkdir -p _build && cd _build &&
+../configure --disable-rpath --enable-the-force --prefix=${DESTINATON}/build --disable-silent-rules &&
 
-make VERBOSE=1 V=1 -j4 &&
+cd ~/geany-ng/_build &&
+make VERBOSE=1 V=1 -j4
+cd ~/geany-ng/_build &&
+make &&
 
 # Shouldn't have to do this, IDK why MinGW makes src/geany.exe incorrect one without .res applied
 cp -f -v src/.libs/geany.exe src/geany.exe &&
 
 make install &&
-
-rm -fr $DESTINATON/release/geany-orig &&
-mkdir -p $DESTINATON/release/geany-orig &&
-rsync -a --delete ${DESTINATON}/build/geany/ $DESTINATON/release/geany-orig &&
 
 printf "\n" &&
 printf "${YEL}Building .exe Installer..." &&
