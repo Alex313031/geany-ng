@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2024 Alex313031.
+# Copyright (c) 2025 Alex313031.
 
 YEL='\033[1;33m' # Yellow
 CYA='\033[1;96m' # Cyan
@@ -21,6 +21,8 @@ displayHelp () {
 	printf "${bold}${GRE}Script to build a Geany-ng installer on Windows.${c0}\n" &&
 	printf "${bold}${YEL}Use the --clean flag to run \`make clean\` & \`make distclean\`.${c0}\n" &&
 	printf "${bold}${YEL}Use the --deps flag to install build dependencies.${c0}\n" &&
+	printf "${bold}${YEL}Use the --debug flag to make a debug build (with no installer).${c0}\n" &&
+	printf "${bold}${YEL}Use the --gtk flag to download GTK bundle for making installer.${c0}\n" &&
 	printf "${bold}${YEL}Use the --sse4 flag to make an SSE4.1 build.${c0}\n" &&
 	printf "${bold}${YEL}Use the --help flag to show this help.${c0}\n" &&
 	printf "\n"
@@ -33,27 +35,30 @@ installDeps () {
 	printf "\n" &&
 	printf "${bold}${GRE}Installing MSYS2 build dependencies...${c0}" &&
 	printf "\n" &&
-	#pacman -Syyuu --needed bash pacman pacman-mirrors msys2-runtime &&
-	pacman -S --needed mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-gdb cmake make mingw-w64-x86_64-libtool \
-            mingw-w64-x86_64-pkgconf autoconf automake gettext mingw-w64-x86_64-gtk3 mingw-w64-x86_64-python3 \
-            mingw-w64-x86_64-python-lxml git rsync wget curl tar dos2unix zip unzip mingw-w64-x86_64-osslsigncode \
-            mingw-w64-x86_64-nsis mingw-w64-x86_64-check mingw-w64-x86_64-enchant mingw-w64-x86_64-lua51 \
-            mingw-w64-x86_64-gpgme mingw-w64-x86_64-libsoup mingw-w64-x86_64-libgit2 mingw-w64-x86_64-gtkspell3 \
-            mingw-w64-x86_64-ctpl-git mingw-w64-x86_64-python-docutils patch ed \
+	#pacman -Syyuu --needed bash pacman pacman-mirrors msys2-runtime git patch rsync unzip dos2unix &&
+	pacman -S git patch rsync wget curl tar dos2unix zip unzip ed autoconf automake gettext make cmake \
             ${MINGW_PACKAGE_PREFIX}-gcc \
             ${MINGW_PACKAGE_PREFIX}-autotools \
             ${MINGW_PACKAGE_PREFIX}-gtk3 \
+            ${MINGW_PACKAGE_PREFIX}-pkgconf \
+            ${MINGW_PACKAGE_PREFIX}-python3 \
             ${MINGW_PACKAGE_PREFIX}-python-docutils \
+            ${MINGW_PACKAGE_PREFIX}-python-lxml \
+            ${MINGW_PACKAGE_PREFIX}-binutils \
             ${MINGW_PACKAGE_PREFIX}-check \
             ${MINGW_PACKAGE_PREFIX}-cppcheck \
             ${MINGW_PACKAGE_PREFIX}-ctpl-git \
             ${MINGW_PACKAGE_PREFIX}-enchant \
+            ${MINGW_PACKAGE_PREFIX}-gdb \
             ${MINGW_PACKAGE_PREFIX}-gpgme \
             ${MINGW_PACKAGE_PREFIX}-gtkspell3 \
             ${MINGW_PACKAGE_PREFIX}-libgit2 \
+            ${MINGW_PACKAGE_PREFIX}-libsoup \
             ${MINGW_PACKAGE_PREFIX}-libsoup3 \
+            ${MINGW_PACKAGE_PREFIX}-libtool \
             ${MINGW_PACKAGE_PREFIX}-lua51 \
-            ${MINGW_PACKAGE_PREFIX}-nsis
+            ${MINGW_PACKAGE_PREFIX}-nsis \
+            ${MINGW_PACKAGE_PREFIX}-osslsigncode
 }
 case $1 in
 	--deps) installDeps; exit 0;;
@@ -74,6 +79,15 @@ case $1 in
 	--clean) makeClean; exit 0;;
 esac
 
+downloadBundle() {
+mkdir -p ~/geany-ng/geany_build/bundle/geany-gtk &&
+cd ~/geany-ng/geany_build/bundle/geany-gtk &&
+bash ~/geany-ng/scripts/gtk-bundle-from-msys2.sh -c -z -3
+}
+case $1 in
+	--gtk) buildDebug; exit 0;;
+esac
+
 buildSSE41 () {
 printf "\n" &&
 printf "${YEL}Building Geany-ng (SSE4.1 Version)..." &&
@@ -86,25 +100,24 @@ export CPPFLAGS="-g0 -s -O3 -msse4.1 -flto=auto -DNDEBUG" &&
 export LFLAGS="-Wl,-O3 -msse4.1 -s -flto=auto" &&
 export LDLIBS="-Wl,-O3 -msse4.1 -s -flto=auto" &&
 export LDFLAGS="-Wl,-O3 -msse4.1 -s -flto=auto" &&
-export OPT_LEVEL="3" &&
-export RUSTFLAGS="-C opt-level=3 -C target-feature=+sse4.1" &&
 
-mkdir -p ~/geany-ng/geany_build/bundle/geany-gtk &&
-cd ~/geany-ng/geany_build/bundle/geany-gtk &&
-bash ~/geany-ng/scripts/gtk-bundle-from-msys2.sh -c -3 &&
+downloadBundle &&
 
 export DESTINATON=~/geany-ng/geany_build &&
 
 cd ~/geany-ng &&
-make clean
 make distclean
 VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac) &&
 NOCONFIGURE=1 ./autogen.sh &&
 export lt_cv_deplibs_check_method=${lt_cv_deplibs_check_method='pass_all'} &&
 mkdir -p dist && cd dist &&
-../configure --enable-the-force --prefix=${DESTINATON}/build/geany --disable-silent-rules &&
+../configure --disable-rpath --enable-the-force --prefix=${DESTINATON}/build/geany --disable-silent-rules &&
 
-make VERBOSE=1 V=1 -j16 &&
+make VERBOSE=1 V=1 -j4 &&
+
+# Shouldn't have to do this, IDK why MinGW makes src/geany.exe incorrect one without .res applied
+cp -f -v src/.libs/geany.exe src/geany.exe &&
+
 make install &&
 
 rm -fr $DESTINATON/release/geany-orig &&
@@ -126,6 +139,45 @@ case $1 in
 	--sse4) buildSSE41; exit 0;;
 esac
 
+buildDebug () {
+printf "\n" &&
+printf "${YEL}Building Geany-ng (Debug SSE2 Version)..." &&
+printf "${CYA}\n" &&
+
+# Build geany-ng installer for SSE4.1
+export CFLAGS="-g -Og -msse2 -DDEBUG -DGEANY_DEBUG" &&
+export CXXFLAGS="-g -Og -msse2 -DDEBUG -DGEANY_DEBUG" &&
+export CPPFLAGS="-g -Og -msse2 -DDEBUG -DGEANY_DEBUG" &&
+export LFLAGS="-msse2" &&
+export LDLIBS="-msse2" &&
+export LDFLAGS="-msse2" &&
+
+export DESTINATON=~/geany-ng/geany_build &&
+
+cd ~/geany-ng &&
+make distclean
+VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac) &&
+NOCONFIGURE=1 ./autogen.sh &&
+export lt_cv_deplibs_check_method=${lt_cv_deplibs_check_method='pass_all'} &&
+mkdir -p dist && cd dist &&
+../configure --disable-rpath --enable-the-force --prefix=${DESTINATON}/build/geany --disable-silent-rules &&
+
+make VERBOSE=1 V=1 -j4 &&
+
+# Shouldn't have to do this, IDK why MinGW makes src/geany.exe incorrect one without .res applied
+cp -f -v src/.libs/geany.exe src/geany.exe &&
+
+make install &&
+
+printf "\n" &&
+printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can find it in ${DESTINATON}/build/geany/" &&
+printf "\n" &&
+tput sgr0
+}
+case $1 in
+	--debug) buildDebug; exit 0;;
+esac
+
 printf "\n" &&
 printf "${YEL}Building Geany-ng..." &&
 printf "${CYA}\n" &&
@@ -137,25 +189,24 @@ export CPPFLAGS="-g0 -s -O3 -mavx -maes -flto=auto -DNDEBUG" &&
 export LFLAGS="-Wl,-O3 -mavx -maes -s -flto=auto" &&
 export LDLIBS="-Wl,-O3 -mavx -maes -s -flto=auto" &&
 export LDFLAGS="-Wl,-O3 -mavx -maes -s -flto=auto" &&
-export OPT_LEVEL="3" &&
-export RUSTFLAGS="-C opt-level=3 -C target-feature=+avx,+aes" &&
 
-mkdir -p ~/geany-ng/geany_build/bundle/geany-gtk &&
-cd ~/geany-ng/geany_build/bundle/geany-gtk &&
-bash ~/geany-ng/scripts/gtk-bundle-from-msys2.sh -c -3 &&
+downloadBundle &&
 
 export DESTINATON=~/geany-ng/geany_build &&
 
 cd ~/geany-ng &&
-make clean
 make distclean
 VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac) &&
 NOCONFIGURE=1 ./autogen.sh &&
 export lt_cv_deplibs_check_method=${lt_cv_deplibs_check_method='pass_all'} &&
 mkdir -p dist && cd dist &&
-../configure --enable-the-force --prefix=${DESTINATON}/build/geany --disable-silent-rules &&
+../configure --disable-rpath --enable-the-force --prefix=${DESTINATON}/build/geany --disable-silent-rules &&
 
-make VERBOSE=1 V=1 -j16 &&
+make VERBOSE=1 V=1 -j4 &&
+
+# Shouldn't have to do this, IDK why MinGW makes src/geany.exe incorrect one without .res applied
+cp -f -v src/.libs/geany.exe src/geany.exe &&
+
 make install &&
 
 rm -fr $DESTINATON/release/geany-orig &&
