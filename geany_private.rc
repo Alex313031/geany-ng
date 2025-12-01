@@ -18,14 +18,14 @@ FILETYPE			VFT_APP
 		// (see https://msdn.microsoft.com/en-us/library/aa381049%28VS.85%29.aspx)
 		BLOCK "040904E4"
 		{
-			VALUE "CompanyName", ""
+			VALUE "CompanyName", "Alex313031"
 			VALUE "FileVersion", VER_FILEVERSION_STR
-			VALUE "FileDescription", "Geany"
+			VALUE "FileDescription", "Geany-ng"
 			VALUE "InternalName", "Geany"
-			VALUE "LegalCopyright", "Copyright 2005 The Geany contributors"
-			VALUE "LegalTrademarks", ""
-			VALUE "OriginalFilename", "Geany.exe"
-			VALUE "ProductName", "Geany"
+			VALUE "LegalCopyright", "Copyright 2025 Alex313031"
+			VALUE "LegalTrademarks", "GPL-2"
+			VALUE "OriginalFilename", "geany.exe"
+			VALUE "ProductName", "Geany-ng"
 			VALUE "ProductVersion", VER_FILEVERSION_STR
 		}
 	}

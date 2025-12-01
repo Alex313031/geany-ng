@@ -41,7 +41,7 @@ G_BEGIN_DECLS
 #define GEANY_FILEDEFS_SUBDIR			"filedefs"
 #define GEANY_TEMPLATES_SUBDIR			"templates"
 #define GEANY_TAGS_SUBDIR				"tags"
-#define GEANY_CODENAME					"Coy"
+#define GEANY_CODENAME					"Hawk"
 #define GEANY_HOMEPAGE          "https://www.geany.org/"
 #define GEANY_NG_HOMEPAGE       "https://github.com/Alex313031/geany-ng#readme"
 #define GEANY_WIKI              "https://wiki.geany.org/"
