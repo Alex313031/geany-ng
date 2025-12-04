@@ -35,7 +35,8 @@ installDeps () {
 	printf "\n" &&
 	printf "${bold}${GRE}Installing MSYS2 build dependencies...${c0}" &&
 	printf "\n" &&
-	pacman -S git patch rsync wget curl tar dos2unix zip unzip ed autoconf automake gettext make cmake \
+	pacman -S base-devel git patch rsync wget curl tar dos2unix zip unzip ed autoconf automake gettext make cmake \
+            mingw-w64-i686-toolchain
             ${MINGW_PACKAGE_PREFIX}-gcc \
             ${MINGW_PACKAGE_PREFIX}-autotools \
             ${MINGW_PACKAGE_PREFIX}-gtk3 \
