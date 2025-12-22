@@ -1,74 +1,167 @@
 name: Windows/MSYS2 Build
 on:
+  push:
+    branches:
+      - master
+    tags:
+      - '[0-9]**'
+  pull_request:
+    branches:
+      - master
   workflow_dispatch:
+    inputs:
+      sign_artifacts:
+        description: 'Sign artifacts'
+        required: false
+        type: boolean
+
+env:
+  SCCACHE_DIR: ${{ github.workspace }}/.sccache
+  SCCACHE_CACHE_SIZE: 1G
 
 jobs:
   msys2-mingw64:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - build-tool: autotools
+          - build-tool: meson
     defaults:
       run:
         shell: msys2 {0}
+    env:
+      CC: sccache gcc
+      CXX: sccache g++
     steps:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: UCRT64
           update: true
           install: |
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-autotools
-            mingw-w64-x86_64-gtk3
-            mingw-w64-x86_64-python-docutils
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-${{ matrix.build-tool }}
+            ${{ matrix.build-tool == 'meson' && 'mingw-w64-ucrt-x86_64-jq' || '' }}
+            mingw-w64-ucrt-x86_64-sccache
+            mingw-w64-ucrt-x86_64-gtk3
+            mingw-w64-ucrt-x86_64-python-docutils
             patch
             rsync
             unzip
             dos2unix
-            mingw-w64-x86_64-nsis
+            mingw-w64-ucrt-x86_64-nsis
+      # build the GTK bundle, but cache it for a week
+      - name: Cache timestamp for GTK-Bundle
+        id: cache_gtk_bundle_timestamp
+        # we use a Monday-based weekly cache, so it usually doesn't change
+        # right before a release, as we usually do them on Sundays.
+        run: echo "timestamp=$(date +%Y-%W)" >> $GITHUB_OUTPUT
+      - name: Cache GTK-Bundle
+        id: cache_gtk_bundle
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/geany_build/bundle/geany-gtk
+          key: ${{ runner.os }}-${{ github.job }}-bundle-geany-gtk-${{ hashFiles('scripts/gtk-bundle-from-msys2.sh') }}-${{ steps.cache_gtk_bundle_timestamp.outputs.timestamp }}
       - name: GTK-Bundle
+        if: steps.cache_gtk_bundle.outputs.cache-hit != 'true'
         run: |
           mkdir -p geany_build/bundle/geany-gtk
           cd geany_build/bundle/geany-gtk
-          bash $(cygpath -u "${GITHUB_WORKSPACE}")/scripts/gtk-bundle-from-msys2.sh -3
-      - name: CI-Build
+          bash $(cygpath -u "${GITHUB_WORKSPACE}")/scripts/gtk-bundle-from-msys2.sh -3 --ucrt64
+
+      - name: Configure sccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.SCCACHE_DIR }}
+          key: ${{ runner.os }}-${{ github.job }}-${{ matrix.build-tool }}-sccache-${{ github.run_id }}
+          restore-keys: ${{ runner.os }}-${{ github.job }}-${{ matrix.build-tool }}-sccache-
+
+      - name: Prepare Build environment
         run: |
-          DESTINATON=$(cygpath -u "${GITHUB_WORKSPACE}")/geany_build
-          VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac)
+          echo "DESTINATION=$(cygpath -u "${GITHUB_WORKSPACE}")/geany_build" >> $GITHUB_ENV
+      - name: Build (Autotools)
+        if: matrix.build-tool == 'autotools'
+        run: |
+          echo "VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac)" >> $GITHUB_ENV
           NOCONFIGURE=1 ./autogen.sh
           export lt_cv_deplibs_check_method=${lt_cv_deplibs_check_method='pass_all'}
           mkdir -p _build
           cd _build
-          ../configure --prefix=${DESTINATON}/build/geany --disable-silent-rules
+          ../configure --prefix=${DESTINATION}/build/geany --disable-silent-rules
           make -j
           make install
-          mkdir -p ${DESTINATON}/release/geany-orig
-          rsync -a --delete ${DESTINATON}/build/geany/ ${DESTINATON}/release/geany-orig
+      - name: Build (Meson)
+        if: matrix.build-tool == 'meson'
+        run: |
+          echo "VERSION=$(meson introspect --projectinfo meson.build | jq -r .version)" >> $GITHUB_ENV
+          meson setup --prefix=${DESTINATION}/build/geany _build .
+          meson compile -C _build
+          meson install -C _build
       - name: Compile NSIS
         run: |
-          VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac)
+          mkdir -p ${DESTINATION}/release/geany-orig
+          rsync -a --delete ${DESTINATION}/build/geany/ ${DESTINATION}/release/geany-orig
           python scripts/msys2-geany-release.py ${VERSION}
+
+      # Test the resulting installer.  We use cmd.exe as the shell because the
+      # installer doesn't seem to love MSYS2 for some reason.
+      - name: Test NSIS
+        shell: cmd
+        run: |
+          ECHO ON
+          SET DESTINATION=%GITHUB_WORKSPACE%\geany_install
+          start "geany-2.2.0_setup.exe" /wait %GITHUB_WORKSPACE%\geany_build\geany-2.2.0_setup.exe /S /D=%DESTINATION%
+          IF NOT EXIST "%DESTINATION%\uninst.exe" EXIT /B 1
+          IF NOT EXIST "%DESTINATION%\bin\geany.exe" EXIT /B 1
+          IF NOT EXIST "%DESTINATION%\lib\geany\export.dll" EXIT /B 1
+          IF EXIST "%DESTINATION%\lib\geany\demoplugin.dll" EXIT /B 1
+      - name: Test installed Geany
+        shell: cmd
+        run: |
+          %GITHUB_WORKSPACE%\geany_install\bin\geany.exe --version
+      - name: Test NSIS uninstaller
+        shell: cmd
+        run: |
+          ECHO ON
+          SET DESTINATION=%GITHUB_WORKSPACE%\geany_install
+          start "uninst" /wait %DESTINATION%\uninst.exe /S
+          REM it seems the uninstaller returns earlier than the files are actually removed, so wait a moment
+          ping -n 10 127.0.0.1 >NUL
+          IF EXIST "%DESTINATION%" EXIT /B 1
+
       - name: Upload Unsigned Artifact
         id: upload-unsigned-artifact
         uses: actions/upload-artifact@v5
         with:
-          name: geany-unsigned
+          name: geany-unsigned${{ matrix.build-tool != 'autotools' && format('-{0}', matrix.build-tool) || '' }}
           path: geany_build/*.exe
           retention-days: 3
           overwrite: true
           if-no-files-found: error
+
+      - name: sccache statistics
+        run: sccache --show-stats
+
       - name: SignPath Signing
-        uses: signpath/github-action-submit-signing-request@v2.0
+        id: sign-artifact
+        uses: signpath/github-action-submit-signing-request@v2
+        # Only sign artifacts on tags
+        if: matrix.build-tool == 'autotools' && (inputs.sign_artifacts || startsWith(github.ref, 'refs/tags/'))
         with:
           api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
           organization-id: '${{ vars.SIGNPATH_ORGANIZATION_ID }}'
           project-slug: 'geany'
-          signing-policy-slug: 'test-signing'
+          signing-policy-slug: 'release-signing'
           github-artifact-id: '${{ steps.upload-unsigned-artifact.outputs.artifact-id }}'
           wait-for-completion: true
           output-artifact-directory: geany-signed
       - name: Upload Signed Artifact
         uses: actions/upload-artifact@v5
+        if: steps.sign-artifact.outcome == 'success'
         with:
           name: geany-signed
           path: geany-signed
