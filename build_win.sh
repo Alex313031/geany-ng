@@ -124,7 +124,7 @@ esac
 downloadBundle() {
 mkdir -p ~/geany-ng/geany_build/bundle/geany-gtk &&
 cd ~/geany-ng/geany_build/bundle/geany-gtk &&
-bash ~/geany-ng/scripts/gtk-bundle-from-msys2.sh -c -3
+bash ~/geany-ng/scripts/gtk-bundle-from-msys2.sh --mingw64 -c -3
 }
 case $1 in
 	--gtk) buildDebug; exit 0;;
