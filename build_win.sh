@@ -143,8 +143,6 @@ export LFLAGS="-Wl,-O3 -msse4.1 -s -flto=auto" &&
 export LDLIBS="-Wl,-O3 -msse4.1 -s -flto=auto" &&
 export LDFLAGS="-Wl,-O3 -msse4.1 -s -flto=auto" &&
 
-downloadBundle &&
-
 export DESTINATON=~/geany-ng/geany_build &&
 
 cd ~/geany-ng &&
@@ -233,8 +231,6 @@ export CPPFLAGS="-g0 -s -O3 -mavx -maes -flto=auto -DNDEBUG" &&
 export LFLAGS="-Wl,-O3 -mavx -maes -s -flto=auto" &&
 export LDLIBS="-Wl,-O3 -mavx -maes -s -flto=auto" &&
 export LDFLAGS="-Wl,-O3 -mavx -maes -s -flto=auto" &&
-
-downloadBundle &&
 
 export DESTINATON=~/geany-ng/geany_build &&
 
