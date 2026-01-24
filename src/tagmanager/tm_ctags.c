@@ -22,6 +22,7 @@
 #include "param_p.h"
 
 #include <string.h>
+#include <errno.h>
 
 
 static gint write_entry(tagWriter *writer, MIO * mio, const tagEntryInfo *const tag, void *user_data);
@@ -40,11 +41,32 @@ tagWriter geanyWriter = {
 };
 
 
+G_GNUC_PRINTF(2, 0)
 static bool nonfatal_error_printer(const errorSelection selection,
 					  const gchar *const format,
 					  va_list ap, void *data CTAGS_ATTR_UNUSED)
 {
-	g_logv(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING, format, ap);
+	GLogLevelFlags lvl_flags;
+
+	if (selection & FATAL)
+		lvl_flags = G_LOG_LEVEL_CRITICAL;
+	else if (selection & WARNING)
+		lvl_flags = G_LOG_LEVEL_WARNING;
+	else if (selection & NOTICE)
+		lvl_flags = G_LOG_LEVEL_INFO;
+	else /* use WARNING level by default */
+		lvl_flags = G_LOG_LEVEL_WARNING;
+
+	if (! (selection & PERROR))
+		g_logv(G_LOG_DOMAIN, lvl_flags, format, ap);
+	else
+	{
+		const gchar *err = g_strerror(errno);
+		gchar *msg = g_strdup_vprintf(format, ap);
+
+		g_log(G_LOG_DOMAIN, lvl_flags, "%s: %s", msg, err);
+		g_free(msg);
+	}
 
 	return false;
 }
@@ -286,7 +308,7 @@ static void rename_anon_tags(TMSourceFile *source_file)
 			guint j;
 			guint new_name_len, orig_name_len;
 			gboolean inside_nesting = FALSE;
-			guint scope_len = tag->scope ? strlen(tag->scope) : 0;
+			gsize scope_len = tag->scope ? strlen(tag->scope) : 0;
 			gchar kind = tag->kind_letter;
 
 			orig_name = tag->name;
@@ -300,7 +322,7 @@ static void rename_anon_tags(TMSourceFile *source_file)
 				for (j = i + 1; j < source_file->tags_array->len; j++)
 				{
 					TMTag *nested_tag = TM_TAG(source_file->tags_array->pdata[j]);
-					guint nested_scope_len = nested_tag->scope ? strlen(nested_tag->scope) : 0;
+					gsize nested_scope_len = nested_tag->scope ? strlen(nested_tag->scope) : 0;
 
 					/* Tags can be interleaved with scopeless macros - skip those */
 					if (nested_tag->type & (tm_tag_macro_t | tm_tag_macro_with_arg_t))
@@ -317,7 +339,7 @@ static void rename_anon_tags(TMSourceFile *source_file)
 				if (j < source_file->tags_array->len)
 				{
 					TMTag *typedef_tag = TM_TAG(source_file->tags_array->pdata[j]);
-					guint typedef_scope_len = typedef_tag->scope ? strlen(typedef_tag->scope) : 0;
+					gsize typedef_scope_len = typedef_tag->scope ? strlen(typedef_tag->scope) : 0;
 
 					/* Should be at the same scope level as the anon tag */
 					if (typedef_tag->type == tm_tag_typedef_t &&
@@ -362,7 +384,7 @@ static void rename_anon_tags(TMSourceFile *source_file)
 			for (j = i + 1; j < source_file->tags_array->len; j++)
 			{
 				TMTag *nested_tag = TM_TAG(source_file->tags_array->pdata[j]);
-				guint nested_scope_len = nested_tag->scope ? strlen(nested_tag->scope) : 0;
+				gsize nested_scope_len = nested_tag->scope ? strlen(nested_tag->scope) : 0;
 
 				/* Tags can be interleaved with scopeless macros - skip those */
 				if (is_c && nested_tag->type & (tm_tag_macro_t | tm_tag_macro_with_arg_t))
@@ -402,7 +424,7 @@ static void rename_anon_tags(TMSourceFile *source_file)
 			while (j < source_file->tags_array->len)
 			{
 				TMTag *var_tag = TM_TAG(source_file->tags_array->pdata[j]);
-				guint var_scope_len = var_tag->scope ? strlen(var_tag->scope) : 0;
+				gsize var_scope_len = var_tag->scope ? strlen(var_tag->scope) : 0;
 
 				/* Should be at the same scope level as the anon tag */
 				if (var_scope_len != scope_len || ! var_tag->var_type ||

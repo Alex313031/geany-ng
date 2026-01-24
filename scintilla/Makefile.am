@@ -9,6 +9,7 @@ include/Scintilla.h                    \
 include/Scintilla.iface                \
 include/ScintillaWidget.h              \
 include/Sci_Position.h                 \
+lexilla/include/LexicalStyles.iface    \
 lexilla/include/SciLexer.h
 
 LEXER_SRCS =                           \
@@ -57,6 +58,7 @@ lexilla/lexers/LexR.cxx                \
 lexilla/lexers/LexRaku.cxx             \
 lexilla/lexers/LexRuby.cxx             \
 lexilla/lexers/LexRust.cxx             \
+lexilla/lexers/LexSINEX.cxx            \
 lexilla/lexers/LexSmalltalk.cxx        \
 lexilla/lexers/LexSQL.cxx              \
 lexilla/lexers/LexTCL.cxx              \
