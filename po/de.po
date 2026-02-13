@@ -1268,7 +1268,7 @@ msgstr "Leerzeichen und Tabulatoren am Zeilenende entfernen"
 
 #: data/geany.glade:4673
 msgid "Removes trailing spaces and tabs at the end of lines"
-msgstr "Entfernt Leerzeichen und Tabulatoren am Ende einer Zeile"
+msgstr "Entfernt Leerzeichen und Tabulatoren am Ende jeder Zeile"
 
 #: data/geany.glade:4685 data/geany.glade:9538 src/keybindings.c:674
 msgid "Replace tabs with space"
