@@ -16,7 +16,7 @@
 
 #include "parse.h"
 #include "vstring.h"
-#include "../cpreprocessor.h"
+#include "../x-cpreprocessor.h"
 #include "debug.h"
 #include "keyword.h"
 #include "read.h"
@@ -1042,6 +1042,8 @@ static bool cxxParserParseNextTokenCondenseCXX11Attribute(void)
 			"This function should be called only after we have parsed ["
 		);
 
+	g_cxx.bInCXX11Attribute = true;
+
 	// Input stream: [[...
 	//   If the syntax is correct then this is an attribute sequence [[foo]]
 	//
@@ -1071,6 +1073,7 @@ static bool cxxParserParseNextTokenCondenseCXX11Attribute(void)
 		// Kill the token chain
 		cxxTokenChainDestroyLast(g_cxx.pTokenChain);
 
+		g_cxx.bInCXX11Attribute = false;
 		return cxxParserParseNextToken();
 	}
 
@@ -1098,6 +1101,7 @@ static bool cxxParserParseNextTokenCondenseCXX11Attribute(void)
 	cxxTokenChainDestroyLast(g_cxx.pTokenChain);
 
 	// And finally extract yet another token.
+	g_cxx.bInCXX11Attribute = false;
 	bool bRet = cxxParserParseNextToken();
 
 	CXX_DEBUG_LEAVE();
@@ -1121,6 +1125,7 @@ static bool cxxParserParseNextTokenSkipMacroParenthesis(CXXToken ** ppChain)
 	if(g_cxx.iChar != '(')
 	{
 		*ppChain = NULL;
+		CXX_DEBUG_LEAVE_TEXT("No macro parenthesis");
 		return true; // no parenthesis
 	}
 
@@ -1161,7 +1166,9 @@ static bool cxxParserParseNextTokenSkipMacroParenthesis(CXXToken ** ppChain)
 
 static void cxxParserParseNextTokenApplyReplacement(
 		cppMacroInfo * pInfo,
-		CXXToken * pParameterChainToken
+		CXXToken * pParameterChainToken,
+		int iMacroLineNumber,
+		MIOPos oMacroFilePosition
 	)
 {
 	CXX_DEBUG_ENTER();
@@ -1174,9 +1181,8 @@ static void cxxParserParseNextTokenApplyReplacement(
 		CXX_DEBUG_ASSERT(!pParameterChainToken,"This shouldn't have been extracted");
 	}
 
-	CXXTokenChain * pParameters = NULL;
-	const char ** aParameters = NULL;
-	int iParameterCount = 0;
+	CXXTokenChain *pParameters = NULL;
+	ptrArray *pMacroArgs = NULL;
 
 	if(pInfo->hasParameterList && pParameterChainToken && (pParameterChainToken->pChain->iCount >= 3))
 	{
@@ -1188,31 +1194,36 @@ static void cxxParserParseNextTokenApplyReplacement(
 				pParameterChainToken->pChain
 			);
 
-		aParameters = (const char **)eMalloc(sizeof(const char *) * pParameters->iCount);
+		pMacroArgs = ptrArrayNew(cppMacroArgDelete);
+
 		CXXToken * pParam = cxxTokenChainFirst(pParameters);
 		while(pParam)
 		{
-			aParameters[iParameterCount] = vStringValue(pParam->pszWord);
-			iParameterCount++;
+			cppMacroArg *pArg = cppMacroArgNew(vStringValue(pParam->pszWord),
+											   false,
+											   pParam->iLineNumber,
+											   pParam->oFilePosition);
+			ptrArrayAdd(pMacroArgs, pArg);
 			pParam = pParam->pNext;
 		}
-
-		CXX_DEBUG_ASSERT(iParameterCount == pParameters->iCount,"Bad number of parameters found");
 	}
 
-	vString * pReplacement = cppBuildMacroReplacement(pInfo,aParameters,iParameterCount);
-
+	cppMacroTokens *pMacroTokens = cppExpandMacro(pInfo, pMacroArgs,
+												  (unsigned long)iMacroLineNumber,
+												  oMacroFilePosition);
+	ptrArrayDelete(pMacroArgs);	// NULL is acceptable.
 	if(pParameters)
-	{
 		cxxTokenChainDestroy(pParameters);
-		eFree((char**)aParameters);
+
+#ifdef CXX_DO_DEBUGGING
+	{
+		vString *pReplacement = cppFlattenMacroTokensToNewString (pMacroTokens);
+		CXX_DEBUG_PRINT("Applying complex replacement '%s'", vStringValue(pReplacement));
+		vStringDelete (pReplacement);
 	}
+#endif
 
-	CXX_DEBUG_PRINT("Applying complex replacement '%s'",vStringValue(pReplacement));
-
-	cppUngetStringBuiltByMacro(vStringValue(pReplacement),vStringLength(pReplacement), pInfo);
-
-	vStringDelete(pReplacement);
+	cppUngetMacroTokens(pMacroTokens);
 
 	CXX_DEBUG_LEAVE();
 }
@@ -1243,14 +1254,6 @@ void cxxParserUngetCurrentToken(void)
 
 
 #define CXX_PARSER_MAXIMUM_TOKEN_CHAIN_SIZE 16384
-
-// We stop applying macro replacements if the unget buffer gets too big
-// as it is a sign of recursive macro expansion
-#define CXX_PARSER_MAXIMUM_UNGET_BUFFER_SIZE_FOR_MACRO_REPLACEMENTS 65536
-
-// We stop applying macro replacements if a macro is used so many
-// times in a recursive macro expansion.
-#define CXX_PARSER_MAXIMUM_MACRO_USE_COUNT 8
 
 // Returns false if it finds an EOF. Returns true otherwise.
 //
@@ -1294,8 +1297,8 @@ bool cxxParserParseNextToken(void)
 	cppBeginStatement();
 
 	// This must be done after getting char from input
-	t->iLineNumber = getInputLineNumber();
-	t->oFilePosition = getInputFilePosition();
+	t->iLineNumber = cppGetInputLineNumber();
+	t->oFilePosition = cppGetInputFilePosition();
 
 	if(g_cxx.iChar == EOF)
 	{
@@ -1379,33 +1382,63 @@ bool cxxParserParseNextToken(void)
 		} else {
 
 			cppMacroInfo * pMacro = cppFindMacro(vStringValue(t->pszWord));
+			int iMacroLineNumber = t->iLineNumber;
+			MIOPos oMacroFilePosition = t->oFilePosition;
 
 #ifdef DEBUG
-			if(pMacro && (pMacro->useCount >= CXX_PARSER_MAXIMUM_MACRO_USE_COUNT))
+			if(pMacro && (pMacro->useCount >= CPP_MAXIMUM_MACRO_USE_COUNT))
 			{
 				/* If the macro is overly used, report it here. */
 				CXX_DEBUG_PRINT("Overly uesd macro %s <%p> useCount: %d (> %d)",
 								pMacro->name,
 								pMacro, pMacro->useCount,
-								CXX_PARSER_MAXIMUM_MACRO_USE_COUNT);
+								CPP_MAXIMUM_MACRO_USE_COUNT);
 			}
 #endif
 
-			if(pMacro && (pMacro->useCount < CXX_PARSER_MAXIMUM_MACRO_USE_COUNT))
+			if(pMacro && (pMacro->useCount < CPP_MAXIMUM_MACRO_USE_COUNT))
 			{
 				CXX_DEBUG_PRINT("Macro %s <%p> useCount: %d", pMacro->name,
 								pMacro, pMacro->useCount);
 
-				cxxTokenChainDestroyLast(g_cxx.pTokenChain);
+				/* `t' is at the end of g_cxx.pTokenChain. */
+				cxxTokenChainTakeLast(g_cxx.pTokenChain);
 
 				CXXToken * pParameterChain = NULL;
 
 				if(pMacro->hasParameterList)
 				{
 					CXX_DEBUG_PRINT("Macro has parameter list");
-					if(!cxxParserParseNextTokenSkipMacroParenthesis(&pParameterChain))
+					if(!cxxParserParseNextTokenSkipMacroParenthesis(&pParameterChain)) {
+						cxxTokenDestroy(t);
 						return false;
+					}
+
+					/* The macro definition requires argument(s).
+					 * However, the parser cannot find '(' just after the macro token (`t')
+					 * on the current input stream.
+					 *
+					 * e.g.
+					 *
+					 *   // the macro definition
+					 *   -D't(x)=(x+1)'
+					 *
+					 *   // input stream
+					 *   int t;
+					 * -------^ no '('.
+					 *
+					 * In this case we should expand nothing. Just extract token `t'
+					 * as is; just append `t' to g_cxx.pTokenChain. and return the
+					 * control.
+					 */
+					if (pParameterChain == NULL) {
+						CXX_DEBUG_PRINT("Macro definition requires argument(s) but we cannot find them");
+						cxxTokenChainAppend(g_cxx.pTokenChain, t);
+						return true;
+					}
 				}
+				cxxTokenDestroy(t);
+
 
 				// This is used to avoid infinite recursion in substitution
 				// (things like -D foo=foo or similar)
@@ -1426,7 +1459,7 @@ bool cxxParserParseNextToken(void)
 						// Detect other cases of nasty macro expansion that cause
 						// the unget buffer to grow fast (but the token chain to grow slowly)
 						//    -D'p=a' -D'a=p+p'
-						(cppUngetBufferSize() < CXX_PARSER_MAXIMUM_UNGET_BUFFER_SIZE_FOR_MACRO_REPLACEMENTS)
+						(cppUngetBufferSize() < CPP_MAXIMUM_UNGET_BUFFER_SIZE_FOR_MACRO_REPLACEMENTS)
 					)
 					{
 						// unget last char
@@ -1434,7 +1467,9 @@ bool cxxParserParseNextToken(void)
 						// unget the replacement
 						cxxParserParseNextTokenApplyReplacement(
 								pMacro,
-								pParameterChain
+								pParameterChain,
+								iMacroLineNumber,
+								oMacroFilePosition
 							);
 
 						g_cxx.iChar = cppGetc();
@@ -1682,7 +1717,7 @@ bool cxxParserParseNextToken(void)
 					} while(cppIsspace(g_cxx.iChar));
 				}
 
-				if(g_cxx.iChar == '[')
+				if(g_cxx.iChar == '[' && !g_cxx.bInCXX11Attribute)
 					return cxxParserParseNextTokenCondenseCXX11Attribute();
 			break;
 			default:

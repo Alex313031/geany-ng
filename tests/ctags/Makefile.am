@@ -137,6 +137,7 @@ test_sources = \
 	combined.html					\
 	combined.php					\
 	common.f						\
+	comment-in-js-2.html			\
 	complex-return.js				\
 	continuation.f90				\
 	continuation.mak				\
@@ -165,6 +166,7 @@ test_sources = \
 	directives.c					\
 	dopbl2.f						\
 	dotted-names.json				\
+	echo-tag.php					\
 	enum.c							\
 	enum.f90						\
 	enum.java						\

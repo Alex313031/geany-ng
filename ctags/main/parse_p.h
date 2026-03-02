@@ -31,11 +31,21 @@
 *   DATA DECLARATIONS
 */
 typedef enum {
-	LMAP_PATTERN   = 1 << 0,
-	LMAP_EXTENSION = 1 << 1,
-	LMAP_ALL       = LMAP_PATTERN | LMAP_EXTENSION,
-	LMAP_TABLE_OUTPUT = 1 << 2,
+	LMAP_REXPR     = 1 << 0,
+	LMAP_PATTERN   = 1 << 1,
+	LMAP_EXTENSION = 1 << 2,
+	LMAP_ALL       = LMAP_PATTERN | LMAP_EXTENSION | LMAP_REXPR,
+	LMAP_TABLE_OUTPUT = 1 << 3,
+	LMAP_NO_LANG_PREFIX = 1 << 4,
 } langmapType;
+
+enum parserCategory
+{
+	PARSER_CATEGORY_NONE,
+	PARSER_CATEGORY_LIBXML,
+	PARSER_CATEGORY_LIBYAML,
+	PARSER_CATEGORY_PACKCC,
+};
 
 /*
 *   FUNCTION PROTOTYPES
@@ -94,6 +104,9 @@ extern void addLanguageExtensionMap (const langType language, const char* extens
 extern bool removeLanguagePatternMap (const langType language, const char *const pattern);
 extern void addLanguagePatternMap (const langType language, const char* ptrn,
 				   bool exclusiveInAllLanguages);
+extern bool removeLanguageRexprMap (const langType language, const char *const rexpr, bool iCase);
+extern void addLanguageRexprMap (const langType language, const char* rexpr, bool iCase,
+				   bool exclusiveInAllLanguages);
 
 extern void installLanguageAliasesDefault (const langType language);
 extern void installLanguageAliasesDefaults (void);
@@ -115,24 +128,27 @@ extern void printLanguageRoles (const langType language, const char* letters,
 								bool withListHeader, bool machinable, FILE *fp);
 extern void printLanguageAliases (const langType language,
 								  bool withListHeader, bool machinable, FILE *fp);
-extern void printLanguageList (void);
+extern void printLanguageList (enum parserCategory category);
 extern void printLanguageParams (const langType language,
 								 bool withListHeader, bool machinable, FILE *fp);
 extern void printLanguageSubparsers (const langType language,
 									 bool withListHeader, bool machinable, FILE *fp);
+extern void printExtradefFlags (bool withListHeader, bool machinable, FILE *fp);
 extern void printLangdefFlags (bool withListHeader, bool machinable, FILE *fp);
 extern void printKinddefFlags (bool withListHeader, bool machinable, FILE *fp);
+extern void printRoledefFlags (bool withListHeader, bool machinable, FILE *fp);
+extern void printFielddefFlags (bool withListHeader, bool machinable, FILE *fp);
 extern bool doesParserRequireMemoryStream (const langType language);
 extern bool parseFile (const char *const fileName);
 extern bool parseFileWithMio (const char *const fileName, MIO *mio, void *clientData);
 extern bool parseRawBuffer(const char *fileName, unsigned char *buffer,
 			    size_t bufferSize, const langType language, void *clientData);
 
-extern bool runParserInNarrowedInputStream (const langType language,
-					       unsigned long startLine, long startCharOffset,
-					       unsigned long endLine, long endCharOffset,
-					       unsigned long sourceLineOffset,
-					       int promise);
+extern bool runParserInArea (const langType language,
+							 unsigned long startLine, long startCharOffset,
+							 unsigned long endLine, long endCharOffset,
+							 unsigned long sourceLineOffset,
+							 int promise);
 
 #ifdef HAVE_ICONV
 extern void freeEncodingResources (void);

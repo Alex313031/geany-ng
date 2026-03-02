@@ -5185,6 +5185,7 @@ void editor_apply_update_prefs(GeanyEditor *editor)
 {
 	ScintillaObject *sci;
 	int caret_y_policy;
+	guint i, margin_count;
 
 	g_return_if_fail(editor != NULL);
 
@@ -5217,6 +5218,13 @@ void editor_apply_update_prefs(GeanyEditor *editor)
 	sci_set_eol_representation_characters(sci, sci_get_eol_mode(sci));
 
 	sci_set_folding_margin_visible(sci, editor_prefs.folding);
+
+	/* Override the default backwards cursor on margins with normal cursor */
+	margin_count = (guint) SSM(sci, SCI_GETMARGINS, 0, 0);
+	for (i = 0; i < margin_count; i++)
+	{
+		SSM(sci, SCI_SETMARGINCURSORN, i, SC_CURSORARROW);
+	}
 
 	/* virtual space */
 	SSM(sci, SCI_SETVIRTUALSPACEOPTIONS, editor_prefs.show_virtual_space, 0);

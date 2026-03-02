@@ -1,0 +1,60 @@
+From b2748a9ecdcf036dbc31a62f3e6dcaaf9d553f9a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ji=C5=99=C3=AD=20Techet?= <techet@gmail.com>
+Date: Fri, 13 Jun 2025 21:54:34 +0200
+Subject: [PATCH 2/3] When creating a promise, check if identical promise
+ already exists
+
+If there's identical promise, don't append it to the promise array.
+
+All promises, including the executed ones, are kept inside the promises
+array so the only thing we have to do is go through the array and check
+if there's an identical promise.
+
+Co-authored-by: Colomban Wendling <lists.ban@herbesfolles.org>
+---
+ ctags/main/promise.c | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+
+diff --git a/ctags/main/promise.c b/ctags/main/promise.c
+index acf8955e1..ad6865011 100644
+--- a/ctags/main/promise.c
++++ b/ctags/main/promise.c
+@@ -62,6 +62,25 @@ static void attachPromiseModifier (int promise,
+ 								   void *data);
+ 
+ 
++static bool havePromise (const struct promise *p)
++{
++	for (int i = 0; i < promise_count; i++)
++	{
++		struct promise *q = promises + i;
++		if (p->lang == q->lang &&
++			p->startLine == q->startLine && p->startColumn == q->startColumn)
++		{
++			error (WARNING, "redundant promise: %s start(line: %lu, column: %ld, srcline: %lu), end(line: %lu, column: %ld)",
++			       q->lang != LANG_IGNORE? getLanguageName(q->lang): "*",
++			       q->startLine, q->startColumn, q->sourceLineOffset,
++			       q->endLine, q->endColumn);
++
++			return true;
++		}
++	}
++	return false;
++}
++
+ int  makePromise   (const char *parser,
+ 		    unsigned long startLine, long startColumn,
+ 		    unsigned long endLine, long endColumn,
+@@ -130,6 +149,9 @@ int  makePromise   (const char *parser,
+ 
+ 	p->modifiers = NULL;
+ 
++	if (havePromise (p))
++		return -1;
++
+ 	r = promise_count;
+ 	promise_count++;
+ 	return r;
+-- 
+2.39.5
+

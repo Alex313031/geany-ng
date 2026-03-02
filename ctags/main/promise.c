@@ -29,9 +29,9 @@
 struct promise {
 	langType lang;
 	unsigned long startLine;
-	long startCharOffset;
+	long startColumn;
 	unsigned long endLine;
-	long endCharOffset;
+	long endColumn;
 	unsigned long sourceLineOffset;
 	int parent_promise;
 	ptrArray *modifiers;
@@ -39,8 +39,8 @@ struct promise {
 
 typedef void ( *promiseInputModifier) (unsigned char * input,
 									   size_t size,
-									   unsigned long startLine, long startCharOffset,
-									   unsigned long endLine, long endCharOffset,
+									   unsigned long startLine, long startColumn,
+									   unsigned long endLine, long endColumn,
 									   void *data);
 typedef void ( *promiseDestroyAttachedData) (void *data);
 
@@ -69,13 +69,13 @@ static bool havePromise (const struct promise *p)
 	{
 		struct promise *q = promises + i;
 		if (p->lang == q->lang &&
-			p->startLine == q->startLine && p->startCharOffset == q->startCharOffset)
+			p->startLine == q->startLine && p->startColumn == q->startColumn)
 		{
-			error (WARNING, "redundant promise when parsing %s: %s start(line: %lu, offset: %ld, srcline: %lu), end(line: %lu, offset: %ld)",
+			error (WARNING, "redundant promise when parsing %s: %s start(line: %lu, column: %ld, srcline: %lu), end(line: %lu, column: %ld)",
 			       getInputFileName (),
 			       q->lang != LANG_IGNORE? getLanguageName(q->lang): "*",
-			       q->startLine, q->startCharOffset, q->sourceLineOffset,
-			       q->endLine, q->endCharOffset);
+			       q->startLine, q->startColumn, q->sourceLineOffset,
+			       q->endLine, q->endColumn);
 
 			return true;
 		}
@@ -84,29 +84,30 @@ static bool havePromise (const struct promise *p)
 }
 
 int  makePromise   (const char *parser,
-		    unsigned long startLine, long startCharOffset,
-		    unsigned long endLine, long endCharOffset,
+		    unsigned long startLine, long startColumn,
+		    unsigned long endLine, long endColumn,
 		    unsigned long sourceLineOffset)
 {
 	struct promise *p;
 	int r;
 	langType lang = LANG_IGNORE;
 
-	const bool is_thin_stream_spec =
-		isThinStreamSpec(startLine, startCharOffset,
-						 endLine, endCharOffset,
-						 sourceLineOffset);
+	const bool is_thin_area_spec =
+		isThinAreaSpec(startLine, startColumn,
+					   endLine, endColumn,
+					   sourceLineOffset);
 
-	if (!is_thin_stream_spec
+	if (!is_thin_area_spec
 		&& (startLine > endLine
-			|| (startLine == endLine && startCharOffset >= endCharOffset)))
+			|| (startLine == endLine && startColumn >= endColumn)))
 		return -1;
 
-	verbose("makePromise: %s start(line: %lu, offset: %ld, srcline: %lu), end(line: %lu, offset: %ld)\n",
-			parser? parser: "*", startLine, startCharOffset, sourceLineOffset,
-			endLine, endCharOffset);
+	verbose("makePromise: %s > %s start(line: %lu, offset: %ld, srcline: %lu), end(line: %lu, offset: %ld)\n",
+			getInputLanguageName (),
+			parser? parser: "*", startLine, startColumn, sourceLineOffset,
+			endLine, endColumn);
 
-	if ((!is_thin_stream_spec)
+	if ((!is_thin_area_spec)
 		&& ( !isXtagEnabled (XTAG_GUEST)))
 		return -1;
 
@@ -130,11 +131,24 @@ int  makePromise   (const char *parser,
 	p = promises + promise_count;
 	p->parent_promise = current_promise;
 	p->lang = lang;
-	p->startLine = startLine;
-	p->startCharOffset = startCharOffset;
-	p->endLine = endLine;
-	p->endCharOffset = endCharOffset;
-	p->sourceLineOffset = sourceLineOffset;
+
+	if (is_thin_area_spec && isAreaStacked())
+	{
+		getAreaInfo (&p->startLine,
+					 &p->startColumn,
+					 &p->endLine,
+					 &p->endColumn);
+		p->sourceLineOffset = p->startLine;
+	}
+	else
+	{
+		p->startLine = startLine;
+		p->startColumn = startColumn;
+		p->endLine = endLine;
+		p->endColumn = endColumn;
+		p->sourceLineOffset = sourceLineOffset;
+	}
+
 	p->modifiers = NULL;
 
 	if (havePromise (p))
@@ -204,13 +218,13 @@ bool forcePromises (void)
 		struct promise *p = promises + i;
 
 		if (p->lang != LANG_IGNORE && isLanguageEnabled (p->lang))
-			tagFileResized = runParserInNarrowedInputStream (p->lang,
-															 p->startLine,
-															 p->startCharOffset,
-															 p->endLine,
-															 p->endCharOffset,
-															 p->sourceLineOffset,
-															 i)
+			tagFileResized = runParserInArea (p->lang,
+											  p->startLine,
+											  p->startColumn,
+											  p->endLine,
+											  p->endColumn,
+											  p->sourceLineOffset,
+											  i)
 				? true
 				: tagFileResized;
 	}
@@ -252,8 +266,8 @@ static unsigned char* fill_or_skip (unsigned char *input, const unsigned char *c
 }
 
 static void line_filler (unsigned char *input, size_t const size,
-						 unsigned long const startLine, long const startCharOffset,
-						 unsigned long const endLine, long const endCharOffset,
+						 unsigned long const startLine, long const startColumn,
+						 unsigned long const endLine, long const endColumn,
 						 void *data)
 {
 	const ulongArray *lines = data;
@@ -334,8 +348,8 @@ static void collectModifiers(int promise, ptrArray *modifiers)
 }
 
 void runModifiers (int promise,
-				   unsigned long startLine, long startCharOffset,
-				   unsigned long endLine, long endCharOffset,
+				   unsigned long startLine, long startColumn,
+				   unsigned long endLine, long endColumn,
 				   unsigned char *input,
 				   size_t size)
 {
@@ -346,8 +360,8 @@ void runModifiers (int promise,
 	{
 		struct modifier *m = ptrArrayItem (modifiers, i - 1);
 		m->modifier (input, size,
-					 startLine, startCharOffset,
-					 endLine, endCharOffset,
+					 startLine, startColumn,
+					 endLine, endColumn,
 					 m->data);
 	}
 	ptrArrayDelete (modifiers);

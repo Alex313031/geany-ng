@@ -19,6 +19,7 @@
 #endif
 #include <string.h>
 
+#include "collector.h"
 #include "debug.h"
 #include "entry.h"
 #include "keyword.h"
@@ -28,6 +29,9 @@
 #include "vstring.h"
 #include "xtag.h"
 #include "promise.h"
+
+#include "dependency.h"
+#include "cxx/cxx_tag.h"
 
 /*
  *	On-line "Oracle Database PL/SQL Language Reference":
@@ -504,6 +508,8 @@ static struct SqlReservedWord SqlReservedWord [SQLKEYWORD_COUNT] = {
 	[KEYWORD_without]       = {0 & 0&1&1&0 & 0&0 & 0},
 };
 
+static langType Lang_c;
+
 /*
  *	 FUNCTION DECLARATIONS
  */
@@ -557,7 +563,7 @@ static bool isCmdTerm (tokenInfo *const token)
 			isKeyword (token, KEYWORD_go));
 }
 
-static bool isMatchedEnd(tokenInfo *const token, int nest_lvl)
+static bool isMatchedEnd (tokenInfo *const token, int nest_lvl)
 {
 	bool terminated = false;
 	/*
@@ -614,8 +620,12 @@ static void deleteToken (tokenInfo *const token)
  *	 Tag generation functions
  */
 
-static void makeSqlTag (tokenInfo *const token, const sqlKind kind)
+static int makeSqlTagFull (tokenInfo *const token, const sqlKind kind, int *fqIndex)
 {
+	int r = CORK_NIL;
+	if (fqIndex)
+		*fqIndex = CORK_NIL;
+
 	if (SqlKinds [kind].enabled)
 	{
 		const char *const name = vStringValue (token->string);
@@ -632,6 +642,7 @@ static void makeSqlTag (tokenInfo *const token, const sqlKind kind)
 
 			if (isXtagEnabled (XTAG_QUALIFIED_TAGS))
 			{
+				int r_fq;
 				vString *fulltag;
 				tagEntryInfo xe = e;
 
@@ -640,13 +651,22 @@ static void makeSqlTag (tokenInfo *const token, const sqlKind kind)
 				vStringCat (fulltag, token->string);
 				xe.name = vStringValue (fulltag);
 				markTagExtraBit (&xe, XTAG_QUALIFIED_TAGS);
-				makeTagEntry (&xe);
+				r_fq = makeTagEntry (&xe);
+				if (fqIndex)
+					*fqIndex = r_fq;
 				vStringDelete (fulltag);
 			}
 		}
 
-		makeTagEntry (&e);
+		r = makeTagEntry (&e);
 	}
+
+	return r;
+}
+
+static int makeSqlTag (tokenInfo *const token, const sqlKind kind)
+{
+	return makeSqlTagFull (token, kind, NULL);
 }
 
 /*
@@ -655,7 +675,7 @@ static void makeSqlTag (tokenInfo *const token, const sqlKind kind)
 
 static void parseString (vString *const string, const int delimiter, int *promise)
 {
-	int offset[2];
+	int column[2];
 	unsigned long linenum[3];
 	enum { START, END, SOURCE };
 
@@ -668,7 +688,7 @@ static void parseString (vString *const string, const int delimiter, int *promis
 	{
 		c0 = getcFromInputFile ();
 		linenum[START] = getInputLineNumber ();
-		offset[START]  = getInputLineOffset ();
+		column[START]  = getInputColumnNumber ();
 		linenum[SOURCE] = getSourceLineNumber ();
 		ungetcToInputFile(c0);
 	}
@@ -688,15 +708,26 @@ static void parseString (vString *const string, const int delimiter, int *promis
 		*/
 		else if (c == delimiter)
 		{
+			if (c == '\'')
+			{
+				int d = getcFromInputFile ();
+				if (d == '\'')
+				{
+					vStringPut (string, c);
+					continue;
+				}
+				ungetcToInputFile(d);
+			}
+
 			if (promise)
 			{
 				ungetcToInputFile(c);
 				linenum[END] = getInputLineNumber ();
-				offset[END]  = getInputLineOffset ();
+				column[END]  = getInputColumnNumber ();
 				(void)getcFromInputFile ();
 				*promise = makePromise (NULL,
-										linenum [START], offset [START],
-										linenum [END], offset [END],
+										linenum [START], column [START],
+										linenum [END], column [END],
 										linenum [SOURCE]);
 			}
 			end = true;
@@ -721,7 +752,7 @@ static void parseIdentifier (vString *const string, const int firstChar)
 		ungetcToInputFile (c);		/* unget non-identifier character */
 }
 
-static bool isCCFlag(const char *str)
+static bool isCCFlag (const char *str)
 {
 	return (anyKindEntryInScope(CORK_NIL, str, SQLTAG_PLSQL_CCFLAGS, false) != 0);
 }
@@ -739,7 +770,7 @@ static bool isCCFlag(const char *str)
  */
 static tokenType parseDollarQuote (vString *const string, const int delimiter, int *promise)
 {
-	int offset[2];
+	int column[2];
 	unsigned long linenum[3];
 	enum { START, END, SOURCE };
 
@@ -786,7 +817,7 @@ static tokenType parseDollarQuote (vString *const string, const int delimiter, i
 	if (promise)
 	{
 		linenum[START] = getInputLineNumber ();
-		offset[START]  = getInputLineOffset ();
+		column[START]  = getInputColumnNumber ();
 		linenum[SOURCE] = getSourceLineNumber ();
 	}
 
@@ -833,12 +864,12 @@ static tokenType parseDollarQuote (vString *const string, const int delimiter, i
 				if (promise)
 				{
 					linenum[END] = getInputLineNumber ();
-					offset[END]  = getInputLineOffset ();
-					if (offset[END] > len)
-						offset[END] -= len;
+					column[END]  = getInputColumnNumber ();
+					if (column[END] > len)
+						column[END] -= len;
 					*promise = makePromise (NULL,
-											linenum [START], offset [START],
-											linenum [END], offset [END],
+											linenum [START], column [START],
+											linenum [END], column [END],
 											linenum [SOURCE]);
 				}
 				break;
@@ -881,18 +912,54 @@ getNextChar:
 	switch (c)
 	{
 		case EOF: token->type = TOKEN_EOF;				break;
-		case '(': token->type = TOKEN_OPEN_PAREN;		break;
-		case ')': token->type = TOKEN_CLOSE_PAREN;		break;
-		case ':': token->type = TOKEN_COLON;			break;
-		case ';': token->type = TOKEN_SEMICOLON;		break;
-		case '.': token->type = TOKEN_PERIOD;			break;
-		case ',': token->type = TOKEN_COMMA;			break;
-		case '{': token->type = TOKEN_OPEN_CURLY;		break;
-		case '}': token->type = TOKEN_CLOSE_CURLY;		break;
-		case '~': token->type = TOKEN_TILDE;			break;
-		case '[': token->type = TOKEN_OPEN_SQUARE;		break;
-		case ']': token->type = TOKEN_CLOSE_SQUARE;		break;
-		case '=': token->type = TOKEN_EQUAL;			break;
+		case '(':
+				  token->type = TOKEN_OPEN_PAREN;
+				  vStringPut (token->string, c);
+				  break;
+		case ')':
+				  token->type = TOKEN_CLOSE_PAREN;
+				  vStringPut (token->string, c);
+				  break;
+		case ':':
+				  token->type = TOKEN_COLON;
+				  vStringPut (token->string, c);
+				  break;
+		case ';':
+				  token->type = TOKEN_SEMICOLON;
+				  vStringPut (token->string, c);
+				  break;
+		case '.':
+				  token->type = TOKEN_PERIOD;
+				  vStringPut (token->string, c);
+				  break;
+		case ',':
+				  token->type = TOKEN_COMMA;
+				  vStringPut (token->string, c);
+				  break;
+		case '{':
+				  token->type = TOKEN_OPEN_CURLY;
+				  vStringPut (token->string, c);
+				  break;
+		case '}':
+				  token->type = TOKEN_CLOSE_CURLY;
+				  vStringPut (token->string, c);
+				  break;
+		case '~':
+				  token->type = TOKEN_TILDE;
+				  vStringPut (token->string, c);
+				  break;
+		case '[':
+				  token->type = TOKEN_OPEN_SQUARE;
+				  vStringPut (token->string, c);
+				  break;
+		case ']':
+				  token->type = TOKEN_CLOSE_SQUARE;
+				  vStringPut (token->string, c);
+				  break;
+		case '=':
+				  token->type = TOKEN_EQUAL;
+				  vStringPut (token->string, c);
+				  break;
 
 		case '\'':
 		case '"':
@@ -914,8 +981,10 @@ getNextChar:
 				  }
 				  else
 				  {
+					  vStringPut (token->string, c);
 					  if (!isspace (c))
 						  ungetcToInputFile (c);
+					  vStringPut (token->string, c);
 					  token->type = TOKEN_OPERATOR;
 				  }
 				  break;
@@ -924,9 +993,11 @@ getNextChar:
 		case '>':
 				  {
 					  const int initial = c;
+					  vStringPut (token->string, c);
 					  int d = getcFromInputFile ();
 					  if (d == initial)
 					  {
+						  vStringPut (token->string, d);
 						  if (initial == '<')
 							  token->type = TOKEN_BLOCK_LABEL_BEGIN;
 						  else
@@ -942,8 +1013,11 @@ getNextChar:
 
 		case '\\':
 				  c = getcFromInputFile ();
+				  vStringPut (token->string, c);
 				  if (c != '\\'  && c != '"'  && c != '\''  &&  !isspace (c))
 					  ungetcToInputFile (c);
+				  else
+					  vStringPut (token->string, c);
 				  token->type = TOKEN_CHARACTER;
 				  token->lineNumber = getInputLineNumber ();
 				  token->filePosition = getInputFilePosition ();
@@ -955,6 +1029,7 @@ getNextChar:
 					  if ((d != '*') &&		/* is this the start of a comment? */
 						  (d != '/'))		/* is a one line comment? */
 					  {
+						  vStringPut (token->string, c);
 						  token->type = TOKEN_FORWARD_SLASH;
 						  ungetcToInputFile (d);
 					  }
@@ -976,6 +1051,7 @@ getNextChar:
 
 		case '$':
 				  {
+					  /* Too complicated: we will not puts $ to token->string. */
 					  tokenType t;
 					  if (skippingPreproc)
 					  {
@@ -1011,7 +1087,10 @@ getNextChar:
 
 		default:
 				  if (! isIdentChar1 (c))
+				  {
+					  vStringPut (token->string, c);
 					  token->type = TOKEN_UNDEFINED;
+				  }
 				  else
 				  {
 					  parseIdentifier (token->string, c);
@@ -1132,7 +1211,56 @@ static void findCmdTerm (tokenInfo *const token, const bool check_first)
 			 ! isType (token, TOKEN_EOF));
 }
 
-static void skipToMatched(tokenInfo *const token)
+static void collectorAppend (collector *collector, tokenInfo *const token)
+{
+	if (vStringIsEmpty (token->string))
+		return;
+
+
+	int lastType = collector->xdata;
+	collectorStamp (collector, token->type);
+
+	vString *str;
+	vString *strrepr = NULL;
+	if (isType (token, TOKEN_STRING))
+	{
+		/* Rebuild the original text on the source input. */
+		strrepr = vStringNew ();
+
+		vStringPut (strrepr, '\'');
+		for (size_t i = 0; i < vStringLength (token->string); i++)
+		{
+			char c = vStringChar (token->string, i);
+			if (c == '\'')
+				vStringCatS (strrepr, "''");
+			else
+				vStringPut (strrepr, c);
+		}
+		vStringPut (strrepr, '\'');
+
+		str = strrepr;
+	}
+	else
+		str = token->string;
+
+	if (isType (token, TOKEN_COMMA)
+		|| isType (token, TOKEN_OPEN_PAREN)
+		|| isType (token, TOKEN_OPEN_SQUARE) || isType (token, TOKEN_OPEN_CURLY)
+		|| isType (token, TOKEN_CLOSE_PAREN)
+		|| isType (token, TOKEN_CLOSE_SQUARE) || isType (token, TOKEN_CLOSE_CURLY)
+		|| isType (token, TOKEN_PERIOD) || isType (token, TOKEN_COLON)
+		|| lastType == TOKEN_OPEN_PAREN
+		|| lastType == TOKEN_OPEN_SQUARE || lastType == TOKEN_OPEN_CURLY
+		|| lastType == TOKEN_PERIOD || lastType == TOKEN_COLON
+		|| (lastType == TOKEN_UNDEFINED && isType (token, TOKEN_UNDEFINED)))
+		collectorCat (collector, str);
+	else
+		collectorJoin (collector, ' ', str);
+
+	vStringDelete (strrepr);		/* NULL is acceptable. */
+}
+
+static void skipToMatchedFull (tokenInfo *const token, collector *collector)
 {
 	int nest_level = 0;
 	tokenType open_token;
@@ -1168,6 +1296,8 @@ static void skipToMatched(tokenInfo *const token)
 		while (nest_level > 0 && !isType (token, TOKEN_EOF))
 		{
 			readToken (token);
+			if (collector)
+				collectorAppend (collector, token);
 			if (isType (token, open_token))
 			{
 				nest_level++;
@@ -1184,6 +1314,11 @@ static void skipToMatched(tokenInfo *const token)
 	}
 }
 
+static void skipToMatched (tokenInfo *const token)
+{
+	skipToMatchedFull (token, NULL);
+}
+
 static void copyToken (tokenInfo *const dest, tokenInfo *const src)
 {
 	dest->lineNumber = src->lineNumber;
@@ -1195,7 +1330,7 @@ static void copyToken (tokenInfo *const dest, tokenInfo *const src)
 	dest->scopeKind = src->scopeKind;
 }
 
-static void skipArgumentList (tokenInfo *const token)
+static void skipArgumentListFull (tokenInfo *const token, collector *collector)
 {
 	/*
 	 * Other databases can have arguments with fully declared
@@ -1206,15 +1341,31 @@ static void skipArgumentList (tokenInfo *const token)
 
 	if (isType (token, TOKEN_OPEN_PAREN))	/* arguments? */
 	{
-		skipToMatched (token);
+		if (collector)
+			collectorAppend (collector, token);
+		skipToMatchedFull (token, collector);
 	}
 }
 
-static langType getNamedLanguageFromToken(tokenInfo *const token)
+static void collectParameterList (tokenInfo *const token, collector *collector)
+{
+	skipArgumentListFull (token, collector);
+}
+
+static void skipArgumentList (tokenInfo *const token)
+{
+	skipArgumentListFull (token, NULL);
+}
+
+static langType getNamedLanguageFromToken (tokenInfo *const token)
 {
 	langType lang = LANG_IGNORE;
 
-	if (isType (token, TOKEN_IDENTIFIER))
+	if (isType (token, TOKEN_IDENTIFIER)
+		/* https://www.postgresql.org/docs/current/sql-createprocedure.html
+		   ... Enclosing the name in single quotes is deprecated and requires matching
+		   case. ...*/
+		|| isType (token, TOKEN_STRING))
 	{
 		if (vStringLength (token->string) > 2
 			&& vStringValue (token->string) [0] == 'p'
@@ -1232,11 +1383,25 @@ static langType getNamedLanguageFromToken(tokenInfo *const token)
 	return lang;
 }
 
+static void fillExtensionFields (tagEntryInfo *e, collector *signature, collector *typeref)
+{
+	if (signature->repr)
+		e->extensionFields.signature =  collectorStrdup (signature);
+	if (typeref->repr)
+	{
+		e->extensionFields.typeRef[0] = eStrdup ("typename");
+		e->extensionFields.typeRef[1] = collectorStrdup (typeref);
+	}
+}
+
 static void parseSubProgram (tokenInfo *const token)
 {
 	tokenInfo *const name  = newToken ();
 	vString * saveScope = vStringNew ();
 	sqlKind saveScopeKind;
+
+	collector signature = { .repr = 0 };
+	collector typeref = { .repr = 0 };
 
 	/*
 	 * This must handle both prototypes and the body of
@@ -1278,15 +1443,19 @@ static void parseSubProgram (tokenInfo *const token)
 	 *	   END;
 	 *
 	 * Note, a Package adds scope to the items within.
-     *     create or replace package demo_pkg is
-     *         test_var number;
-     *         function test_func return varchar2;
-     *         function more.test_func2 return varchar2;
-     *     end demo_pkg;
+	 *     create or replace package demo_pkg is
+	 *         test_var number;
+	 *         function test_func return varchar2;
+	 *         function more.test_func2 return varchar2;
+	 *     end demo_pkg;
 	 * So the tags generated here, contain the package name:
-     *         demo_pkg.test_var
-     *         demo_pkg.test_func
-     *         demo_pkg.more.test_func2
+	 *         demo_pkg.test_var
+	 *         demo_pkg.test_func
+	 *         demo_pkg.more.test_func2
+	 *
+	 *  ---
+	 *  PostgreSQL 18devel Documentation/36.5. Query Language (SQL) Functions
+	 *         https://www.postgresql.org/docs/devel/xfunc-sql.html
 	 */
 	const sqlKind kind = isKeyword (token, KEYWORD_function) ?
 		SQLTAG_FUNCTION : SQLTAG_PROCEDURE;
@@ -1320,7 +1489,8 @@ static void parseSubProgram (tokenInfo *const token)
 	if (isType (token, TOKEN_OPEN_PAREN))
 	{
 		/* Reads to the next token after the TOKEN_CLOSE_PAREN */
-		skipArgumentList(token);
+		collectorInit (&signature, TOKEN_EOF);
+		collectParameterList (token, &signature);
 	}
 
 	if (kind == SQLTAG_FUNCTION)
@@ -1330,16 +1500,31 @@ static void parseSubProgram (tokenInfo *const token)
 		{
 			/* Read datatype */
 			readToken (token);
+			collectorInit (&typeref, TOKEN_EOF);
+			collectorCat (&typeref, token->string);
+
 			/*
 			 * Read token after which could be the
 			 * command terminator if a prototype
 			 * or an open parenthesis
 			 */
 			readToken (token);
+			while (isType (token, TOKEN_IDENTIFIER)
+				   || isType (token, TOKEN_PERIOD))
+			{
+				collectorAppend (&typeref, token);
+				readToken (token);
+			}
+
 			if (isType (token, TOKEN_OPEN_PAREN))
 			{
-				/* Reads to the next token after the TOKEN_CLOSE_PAREN */
-				skipArgumentList(token);
+				/* Reads to the next token after the TOKEN_CLOSE_PAREN. */
+				collectParameterList (token, &typeref);
+			}
+			else if (isType (token, TOKEN_OPEN_SQUARE))
+			{
+				collectorAppend (&typeref, token);
+				skipToMatchedFull (token, &typeref);
 			}
 		}
 	}
@@ -1409,7 +1594,16 @@ static void parseSubProgram (tokenInfo *const token)
 				isType (name, TOKEN_STRING) ||
 				isType (name, TOKEN_KEYWORD))
 			{
-				makeSqlTag (name, kind);
+				int fq = CORK_NIL;
+				int r = makeSqlTagFull (name, kind, &fq);
+
+				tagEntryInfo *e;
+				e = getEntryInCorkQueue (r);
+				if (e)
+					fillExtensionFields (e, &signature, &typeref);
+				e = getEntryInCorkQueue (fq);
+				if (e)
+					fillExtensionFields (e, &signature, &typeref);
 			}
 
 			parseBlockFull (token, true, lang);
@@ -1419,6 +1613,10 @@ static void parseSubProgram (tokenInfo *const token)
 	}
 	vStringCopy(token->scope, saveScope);
 	token->scopeKind = saveScopeKind;
+	if (typeref.repr)
+		collectorFini (&typeref);	/* NULL is acceptable. */
+	if (signature.repr)
+		collectorFini (&signature);	/* NULL is acceptable. */
 	deleteToken (name);
 	vStringDelete(saveScope);
 }
@@ -2014,6 +2212,16 @@ static void parseBlock (tokenInfo *const token, const bool local)
 	parseBlockFull (token, local, LANG_IGNORE);
 }
 
+static void makeSqlTagForInternalFunction (tokenInfo *const token)
+{
+	tagEntryInfo foreignEntry;
+	initForeignRefTagEntry (
+		&foreignEntry, vStringValue (token->string), Lang_c,
+		CXXTagKindFUNCTION, CXXTagFUNCTIONRoleFOREIGNCALL);
+	updateTagLine (&foreignEntry, token->lineNumber, token->filePosition);
+	makeTagEntry (&foreignEntry);
+}
+
 static void parseBlockFull (tokenInfo *const token, const bool local, langType lang)
 {
 	int promise = -1;
@@ -2033,6 +2241,9 @@ static void parseBlockFull (tokenInfo *const token, const bool local, langType l
 			promise = token->promise;
 			token->promise = -1;
 
+			tokenInfo *const body = newToken ();
+			copyToken (body, token);
+
 			readToken (token);
 			while (! isCmdTerm (token)
 				   && !isType (token, TOKEN_EOF))
@@ -2044,10 +2255,16 @@ static void parseBlockFull (tokenInfo *const token, const bool local, langType l
 					lang = getNamedLanguageFromToken (token);
 					if (lang != LANG_IGNORE)
 						readToken (token);
+					else if (vStringEqC (token->string, "internal"))
+					{
+						makeSqlTagForInternalFunction (body);
+						readToken (token);
+					}
 				}
 				else
 					readToken (token);
 			}
+			deleteToken (body);
 
 			if (promise != -1 && lang != LANG_IGNORE)
 				promiseUpdateLanguage(promise, lang);
@@ -2278,9 +2495,9 @@ static void parseColumnsAndAliases (tokenInfo *const token)
  * https://www.postgresql.org/docs/current/sql-createtable.html
  * https://sqlite.org/lang_createtable.html
  */
-static bool parseIdAfterIfNotExists(tokenInfo *const name,
-									tokenInfo *const token,
-									bool authorization_following)
+static bool parseIdAfterIfNotExists (tokenInfo *const name,
+									 tokenInfo *const token,
+									 bool authorization_following)
 {
 	if (isKeyword (name, KEYWORD_if)
 		&& (isType (token, TOKEN_IDENTIFIER)
@@ -2526,6 +2743,10 @@ static void parseTrigger (tokenInfo *const token)
 	 *	   create trigger "owner"."tr4" begin end;
 	 *	   create trigger "tr5" not valid;
 	 *	   create trigger "tr6" begin end;
+	 *
+	 * (PostgreSQL)
+	 *	   create trigger trigger ... on table ... execute procedure fn();
+	 *
 	 */
 
 	readIdentifier (name);
@@ -2556,6 +2777,7 @@ static void parseTrigger (tokenInfo *const token)
 
 		while (! isKeyword (token, KEYWORD_begin) &&
 			   ! isKeyword (token, KEYWORD_call) &&
+			   ! isKeyword (token, KEYWORD_procedure) &&
 			   ! isCmdTerm (token) &&
 			   ! isType (token, TOKEN_EOF))
 		{
@@ -2571,7 +2793,8 @@ static void parseTrigger (tokenInfo *const token)
 		}
 
 		if (isKeyword (token, KEYWORD_begin) ||
-			isKeyword (token, KEYWORD_call))
+			isKeyword (token, KEYWORD_call)  ||
+			isKeyword (token, KEYWORD_procedure))
 		{
 			addToScope(name, table->string, SQLTAG_TABLE);
 			makeSqlTag (name, SQLTAG_TRIGGER);
@@ -3189,6 +3412,10 @@ extern parserDefinition* SqlParser (void)
 	static const char *const extensions [] = { "sql", NULL };
 	static const char *const aliases [] = {"pgsql", NULL };
 	parserDefinition* def = parserNew ("SQL");
+	static parserDependency dependencies [] = {
+		[0] = { DEPTYPE_FOREIGNER, "C",  &Lang_c },
+	};
+
 	def->kindTable	= SqlKinds;
 	def->kindCount	= ARRAY_SIZE (SqlKinds);
 	def->extensions = extensions;
@@ -3198,5 +3425,7 @@ extern parserDefinition* SqlParser (void)
 	def->keywordTable = SqlKeywordTable;
 	def->keywordCount = ARRAY_SIZE (SqlKeywordTable);
 	def->useCork = CORK_QUEUE | CORK_SYMTAB;
+	def->dependencies = dependencies;
+	def->dependencyCount = ARRAY_SIZE (dependencies);
 	return def;
 }

@@ -49,7 +49,7 @@ parsers = \
 	parsers/cxx/cxx_token_chain.h \
 	parsers/cxx/cxx_token.h \
 	parsers/cpreprocessor.c \
-	parsers/cpreprocessor.h \
+	parsers/x-cpreprocessor.h \
 	parsers/abaqus.c \
 	parsers/abc.c \
 	parsers/ada.c \
@@ -58,12 +58,12 @@ parsers = \
 	parsers/autoit.c \
 	parsers/basic.c \
 	parsers/bibtex.c \
-	parsers/bibtex.h \
+	parsers/x-bibtex.h \
 	parsers/geany_c.c \
 	parsers/clojure.c \
 	parsers/cobol.c \
 	parsers/iniconf.c \
-	parsers/iniconf.h \
+	parsers/x-iniconf.h \
 	parsers/css.c \
 	parsers/diff.c \
 	parsers/geany_docbook.c \
@@ -76,45 +76,48 @@ parsers = \
 	parsers/haskell.c \
 	parsers/haxe.c \
 	parsers/html.c \
+	parsers/x-html.h \
 	parsers/jscript.c \
-	parsers/jscript.h \
+	parsers/x-jscript.h \
 	parsers/json.c \
 	parsers/julia.c \
 	parsers/geany_lcpp.c \
 	parsers/geany_lcpp.h \
 	parsers/ldscript.c \
 	parsers/lisp.c \
+	parsers/x-lisp.h \
 	parsers/lua.c \
 	parsers/make.c \
-	parsers/make.h \
+	parsers/x-make.h \
 	parsers/markdown.c \
-	parsers/markdown.h \
+	parsers/x-markdown.h \
 	parsers/matlab.c \
 	parsers/nsis.c \
 	parsers/objc.c \
 	parsers/ocaml.c \
 	parsers/pascal.c \
 	parsers/perl.c \
-	parsers/perl.h \
+	parsers/x-perl.h \
 	parsers/php.c \
 	parsers/powershell.c \
 	parsers/python.c \
+	parsers/x-python.h \
 	parsers/r.c \
-	parsers/r.h \
+	parsers/x-r.h \
 	parsers/raku.c \
 	parsers/rst.c \
 	parsers/ruby.c \
-	parsers/ruby.h \
+	parsers/x-ruby.h \
 	parsers/rust.c \
 	parsers/sh.c \
-	parsers/sh.h \
+	parsers/x-sh.h \
 	parsers/sinex.c \
 	parsers/sql.c \
 	parsers/tcl.c \
-	parsers/tcl.h \
+	parsers/x-tcl.h \
 	parsers/tcloo.c \
 	parsers/tex.c \
-	parsers/tex.h \
+	parsers/x-tex.h \
 	parsers/txt2tags.c \
 	parsers/typescript.c \
 	parsers/verilog.c \
@@ -133,6 +136,8 @@ libctags_la_SOURCES = \
 	main/args_p.h \
 	main/colprint.c \
 	main/colprint_p.h \
+	main/collector.c \
+	main/collector.h \
 	main/CommonPrelude.c \
 	main/ctags.h \
 	main/debug.c \
@@ -215,6 +220,8 @@ libctags_la_SOURCES = \
 	main/read_p.h \
 	main/repoinfo.c \
 	main/repoinfo.h \
+	main/rexprcode.c \
+	main/rexprcode_p.h \
 	main/routines.c \
 	main/routines.h \
 	main/routines_p.h \
@@ -225,6 +232,7 @@ libctags_la_SOURCES = \
 	main/selectors.h \
 	main/sort.c \
 	main/sort_p.h \
+	main/sort_r.h \
 	main/stats.c \
 	main/stats_p.h \
 	main/strlist.c \

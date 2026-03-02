@@ -1,9 +1,9 @@
-db0001Ì256Ö0
-namespace:  db0001
-db0002Ì256Ö0
-namespace:  db0002
-db0003Ì256Ö0
-namespace:  db0003
+db0001Ì256Í(short_name varchar(12) not null)Ö0
+namespace:  db0001(short_name varchar(12) not null)
+db0002Ì256Í(short_name varchar(12) not null)Ö0
+namespace:  db0002(short_name varchar(12) not null)
+db0003Ì256Í(short_name varchar(12) not null)Ö0
+namespace:  db0003(short_name varchar(12) not null)
 errÌ16384Ö0
 variable:   err
 nÌ16384Ö0

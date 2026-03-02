@@ -1,6 +1,6 @@
 TESTÌ512Ö0
 package:    TEST
-TestFunc1Ì256ÎTESTÖ0
-namespace:  TEST :: TestFunc1
-TestFunc2Ì256ÎTESTÖ0
-namespace:  TEST :: TestFunc2
+TestFunc1Ì256Í(arg1 IN NUMBER, arg2 IN NUMBER)ÎTESTÖ0
+namespace:  TEST :: TestFunc1(arg1 IN NUMBER, arg2 IN NUMBER)
+TestFunc2Ì256Í(arg1 IN NUMBER, arg2 IN NUMBER)ÎTESTÖ0
+namespace:  TEST :: TestFunc2(arg1 IN NUMBER, arg2 IN NUMBER)

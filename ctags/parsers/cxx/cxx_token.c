@@ -13,6 +13,7 @@
 #include "vstring.h"
 #include "read.h"
 #include "objpool.h"
+#include "../x-cpreprocessor.h"
 
 #include "cxx_token_chain.h"
 #include "cxx_debug.h"
@@ -64,6 +65,8 @@ static void clearToken(CXXToken *t)
 		cxxTokenChainDestroy(t->pSideChain);
 		t->pSideChain = NULL;
 	}
+
+	t->bInternalScopeExported = 0;
 }
 
 void cxxTokenAPIInit(void)
@@ -135,6 +138,37 @@ CXXToken * cxxTokenCopy(CXXToken * pToken)
 	return pRetToken;
 }
 
+void cxxTokenReplace(CXXToken *pOriginal, CXXToken *pNew)
+{
+	cxxTokenReplaceWithTokens(pOriginal, pNew, pNew);
+}
+
+CXXToken * cxxTokenReplaceWithTokens(CXXToken *pOriginal,
+									 CXXToken *pHead, CXXToken *pTail)
+{
+	pTail->pNext = pOriginal->pNext;
+	if (pOriginal->pNext)
+		pOriginal->pNext->pPrev = pTail;
+	pOriginal->pNext = NULL;
+
+	pHead->pPrev = pOriginal->pPrev;
+	if (pOriginal->pPrev)
+		pOriginal->pPrev->pNext = pHead;
+	pOriginal->pPrev = NULL;
+
+	return pHead;
+}
+
+CXXToken * cxxTokenReplaceWithTokensInChain(CXXToken *pOriginal,
+											CXXTokenChain *pChain)
+{
+	CXXToken * pHead = pChain->pHead;
+	CXXToken * pTail = pChain->pTail;
+	cxxTokenChainInit(pChain);
+
+	return cxxTokenReplaceWithTokens(pOriginal, pHead, pTail);
+}
+
 CXXToken * cxxTokenCreateKeyword(int iLineNumber,MIOPos oFilePosition,CXXKeyword eKeyword)
 {
 	CXXToken * pToken = cxxTokenCreate();
@@ -156,8 +190,8 @@ CXXToken * cxxTokenCreateAnonymousIdentifier(unsigned int uTagKind, const char *
 	anonGenerate (t->pszWord, szPrefix? szPrefix: "__anon", uTagKind);
 	t->eType = CXXTokenTypeIdentifier;
 	t->bFollowedBySpace = true;
-	t->iLineNumber = getInputLineNumber();
-	t->oFilePosition = getInputFilePosition();
+	t->iLineNumber = cppGetInputLineNumber();
+	t->oFilePosition = cppGetInputFilePosition();
 
 	return t;
 }

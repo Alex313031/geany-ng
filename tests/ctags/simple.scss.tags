@@ -32,6 +32,18 @@ remove-whereÌ16Ö0
 function:   remove-where
 reset-buttonsÌ1Ö0
 class:      reset-buttons
+sass:listÌ256Ö0
+namespace:  sass:list
+sass:listÌ512Ö0
+package:    sass:list
+sass:metaÌ256Ö0
+namespace:  sass:meta
+sass:metaÌ512Ö0
+package:    sass:meta
+sass:stringÌ256Ö0
+namespace:  sass:string
+sass:stringÌ512Ö0
+package:    sass:string
 separatorÌ64Ö0
 member:     separator
 toolbeltÌ2Ö0

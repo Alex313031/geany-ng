@@ -119,7 +119,7 @@ static void copyToken (tokenInfo *const dest, tokenInfo *const src)
 	dest->filePosition = src->filePosition;
 }
 
-static void makeJsonTag (tokenInfo *const token, const jsonKind kind)
+static void makeJsonTag (tokenInfo *const token, unsigned long endLine, const jsonKind kind, int nth)
 {
 	tagEntryInfo e;
 
@@ -130,15 +130,30 @@ static void makeJsonTag (tokenInfo *const token, const jsonKind kind)
 
 	updateTagLine (&e, token->lineNumber, token->filePosition);
 
-	if (vStringLength (token->scope) > 0)
+	if (!vStringIsEmpty (token->scope))
 	{
 		Assert (token->scopeKind > TAG_NONE && token->scopeKind < TAG_COUNT);
 
 		e.extensionFields.scopeKindIndex = token->scopeKind;
 		e.extensionFields.scopeName = vStringValue (token->scope);
+
+		if (token->scopeKind == TAG_ARRAY)
+			e.extensionFields.nth = nth;
 	}
 
+	setTagEndLine (&e, endLine);
 	makeTagEntry (&e);
+
+	if (!vStringIsEmpty (token->scope) && isXtagEnabled (XTAG_QUALIFIED_TAGS))
+	{
+		vString *qname = vStringNewCopy(token->scope);
+		vStringPut(qname, '.');
+		vStringCat(qname, token->string);
+		e.name = vStringValue(qname);
+		markTagExtraBit(&e, XTAG_QUALIFIED_TAGS);
+		makeTagEntry (&e);
+		vStringDelete (qname);
+	}
 }
 
 #define DEPTH_LIMIT 512
@@ -298,8 +313,10 @@ static jsonKind tokenToKind (const tokenType type)
 	}
 }
 
-static void parseValue (tokenInfo *const token)
+static unsigned long parseValue (tokenInfo *const token)
 {
+	unsigned long lastLine = token->lineNumber;
+
 	if (token->type == TOKEN_OPEN_CURLY)
 	{
 		tokenInfo *name = newToken ();
@@ -310,23 +327,25 @@ static void parseValue (tokenInfo *const token)
 			if (token->type == TOKEN_STRING)
 			{
 				jsonKind tagKind = TAG_NULL; /* default in case of invalid value */
+				unsigned long lastLineOfChild;
 
 				copyToken (name, token);
 
 				/* skip any possible garbage before the value */
 				skipToOneOf3 (token, TOKEN_CLOSE_CURLY, TOKEN_COLON, TOKEN_COMMA);
 
+				lastLineOfChild = token->lineNumber;
 				if (token->type == TOKEN_COLON)
 				{
 					readToken (token);
 					tagKind = tokenToKind (token->type);
 
 					pushScope (token, name, tagKind);
-					parseValue (token);
+					lastLineOfChild = parseValue (token);
 					popScope (token, name);
 				}
 
-				makeJsonTag (name, tagKind);
+				makeJsonTag (name, lastLineOfChild, tagKind, 0);
 			}
 			/* skip to the end of the construct */
 			skipToOneOf2 (token, TOKEN_CLOSE_CURLY, TOKEN_COMMA);
@@ -334,6 +353,7 @@ static void parseValue (tokenInfo *const token)
 		while (token->type != TOKEN_EOF &&
 			   token->type != TOKEN_CLOSE_CURLY);
 
+		lastLine = token->lineNumber;
 		if (token->type == TOKEN_CLOSE_CURLY)
 			readToken (token);
 
@@ -350,17 +370,19 @@ static void parseValue (tokenInfo *const token)
 			   token->type != TOKEN_CLOSE_SQUARE)
 		{
 			jsonKind tagKind;
+			unsigned long lastLineOfChild;
 
 			tagKind = tokenToKind (token->type);
 
 			copyToken (name, token);
-			snprintf (buf, sizeof buf, "%u", nth++);
+			snprintf (buf, sizeof buf, "%u", nth);
 			vStringCopyS (name->string, buf);
 
-			makeJsonTag (name, tagKind);
 			pushScope (token, name, tagKind);
-			parseValue (token);
+			lastLineOfChild = parseValue (token);
 			popScope (token, name);
+
+			makeJsonTag (name, lastLineOfChild, tagKind, nth++);
 
 			/* skip to the end of the construct */
 			skipToOneOf2 (token, TOKEN_CLOSE_SQUARE, TOKEN_COMMA);
@@ -368,11 +390,14 @@ static void parseValue (tokenInfo *const token)
 				readToken (token);
 		}
 
+		lastLine = token->lineNumber;
 		if (token->type == TOKEN_CLOSE_SQUARE)
 			readToken (token);
 
 		deleteToken (name);
 	}
+
+	return lastLine;
 }
 
 static void findJsonTags (void)

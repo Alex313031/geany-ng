@@ -35,6 +35,7 @@ static void set_icase_flag (int *flags);
 *    DATA DEFINITIONS
 */
 static struct regexBackend defaultRegexBackend = {
+	.name = "default",
 	.fdefs = NULL,
 	.fdef_count = 0,
 	.set_icase_flag = set_icase_flag,
@@ -105,7 +106,7 @@ static regexCompiledCode compile (struct regexBackend *backend,
 	if (errcode != 0)
 	{
 		char errmsg[256];
-		regerror (errcode, regex_code, errmsg, 256);
+		regerror (errcode, regex_code, errmsg, sizeof(errmsg));
 		error (WARNING, "regcomp: %s", errmsg);
 		regfree (regex_code);
 		eFree (regex_code);

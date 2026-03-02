@@ -5,6 +5,11 @@
 *   GNU General Public License version 2 or (at your option) any later version.
 *
 *   This module contains functions for generating tags for LISP files.
+*
+*   References:
+*
+*   - [Lisp] https://www.lispworks.com/documentation/HyperSpec/Front/index.htm
+*   - [EmacsLisp] https://www.gnu.org/software/emacs/manual/html_node/elisp/index.html
 */
 
 /*
@@ -12,11 +17,14 @@
 */
 #include "general.h"  /* must always come first */
 
+#include "entry.h"
 #include "parse.h"
 #include "read.h"
 #include "routines.h"
 #include "selectors.h"
 #include "vstring.h"
+
+#include "x-lisp.h"
 
 #include <string.h>
 
@@ -29,6 +37,12 @@ typedef enum {
 	K_VARIABLE,
 	K_MACRO,
 	K_CONST,
+	K_TYPE,
+	K_CLASS,
+	K_STRUCT,
+	K_METHOD,
+	K_GENERIC,
+	K_PARAMETER,
 } lispKind;
 
 static kindDefinition LispKinds [] = {
@@ -37,6 +51,28 @@ static kindDefinition LispKinds [] = {
 	{ true, 'v', "variable", "variables" },
 	{ true, 'm', "macro", "macros" },
 	{ true, 'c', "const", "constants" },
+	{ true, 't', "type", "types",
+	  .version = 1 },
+	{ true, 'C', "class", "classes",
+	  .version = 1 },
+	{ true, 's', "struct", "structs",
+	  .version = 1 },
+	{ true, 'M', "method", "methods" },
+	{ true, 'G', "generic", "generics",
+	  .version = 1 },
+	{ true, 'p', "parameter", "parameters",
+	  .version = 1 },
+};
+
+typedef enum {
+	F_DEFINER,
+} lispField;
+
+static fieldDefinition LispFields[] = {
+	{ .name = "definer",
+	  .description = "the name of the function or macro that defines the unknown/Y-kind object",
+	  .enabled = true,
+	  .version = 1 },
 };
 
 typedef enum {
@@ -58,6 +94,17 @@ typedef enum {
 	eK_FACE,
 	eK_THEME,
 } emacsLispKind;
+
+typedef enum {
+	eF_DEFINER,
+} emacsLispField;
+
+static fieldDefinition EmacsLispFields[] = {
+	{ .name = "definer",
+	  .description = "the name of the function or macro that defines the unknown/Y-kind object",
+	  .enabled = true,
+	  .version = 1 },
+};
 
 /* Following macro/builtin doesn't define a name appeared
  * at car. So this parser doesn't handle it well.
@@ -94,13 +141,35 @@ static kindDefinition EmacsLispKinds [] = {
  * lisp tag functions
  *  look for (def or (DEF, quote or QUOTE
  */
-static int L_isdef (const unsigned char *strp, bool case_insensitive)
+extern struct lispIsDefResult lispIsDef (struct lispDialect *dialect,
+										 const unsigned char *strp)
 {
-	bool cis = case_insensitive; /* Renaming for making code short */
+	bool cis = dialect->case_insensitive; /* Renaming for making code short */
+	bool is_def = ( (strp [1] == 'd' || (cis && strp [1] == 'D'))
+					&& (strp [2] == 'e' || (cis && strp [2] == 'E'))
+					&& (strp [3] == 'f' || (cis && strp [3] == 'F')));
 
-	return ( (strp [1] == 'd' || (cis && strp [1] == 'D'))
-		  && (strp [2] == 'e' || (cis && strp [2] == 'E'))
-		  && (strp [3] == 'f' || (cis && strp [3] == 'F')));
+	/* Ignore def"ault" */
+	if (is_def
+		&& (strp [4] == 'a' || (cis && strp [4] == 'A'))
+		&& (strp [5] == 'u' || (cis && strp [5] == 'U'))
+		&& (strp [6] == 'l' || (cis && strp [6] == 'L'))
+		&& (strp [7] == 't' || (cis && strp [7] == 'T')))
+		is_def = false;
+
+	/* Ignore def"inition" */
+	if (is_def
+		&& (strp  [4] == 'i' || (cis && strp  [4] == 'I'))
+		&& (strp  [5] == 'n' || (cis && strp  [5] == 'N'))
+		&& (strp  [6] == 'i' || (cis && strp  [6] == 'I'))
+		&& (strp  [7] == 't' || (cis && strp  [7] == 'T'))
+		&& (strp  [8] == 'i' || (cis && strp  [8] == 'I'))
+		&& (strp  [9] == 'o' || (cis && strp  [9] == 'O'))
+		&& (strp [10] == 'n' || (cis && strp [10] == 'N')))
+		is_def = false;
+
+
+	return (struct lispIsDefResult) { .is_def = is_def, .kind = KIND_GHOST_INDEX };
 }
 
 static int L_isquote (const unsigned char *strp, bool case_insensitive)
@@ -115,34 +184,61 @@ static int L_isquote (const unsigned char *strp, bool case_insensitive)
 		  && isspace (*(++strp)));
 }
 
-static int  lisp_hint2kind (const vString *const hint)
+static int L_issetf (const unsigned char *strp, bool case_insensitive)
+{
+	bool cis = case_insensitive; /* Renaming for making code short */
+
+	return ( (*(++strp) == 's' || (cis && *strp == 'S'))
+		  && (*(++strp) == 'e' || (cis && *strp == 'E'))
+		  && (*(++strp) == 't' || (cis && *strp == 'T'))
+		  && (*(++strp) == 'f' || (cis && *strp == 'F'))
+		  && isspace (*(++strp)));
+}
+
+static int lisp_hint2kind (struct lispKindHint *hint, const char *namespace CTAGS_ATTR_UNUSED)
 {
 	int k = K_UNKNOWN;
-	int n;
+	int n = vStringLength (hint->str) - 4;
 
 	/* 4 means strlen("(def"). */
-#define EQN(X) strncmp(vStringValue (hint) + 4, &X[3], n) == 0
-	switch (vStringLength (hint) - 4)
+#define EQN(X) strncmp(vStringValue (hint->str) + 4, &X[3], n) == 0
+	switch (n)
 	{
 	case 2:
-		n = 2;
 		if (EQN("DEFUN"))
 			k = K_FUNCTION;
 		break;
 	case 3:
-		n = 3;
 		if (EQN("DEFVAR"))
 			k = K_VARIABLE;
 		break;
+	case 4:
+		if (EQN("DEFTYPE"))
+			k = K_TYPE;
+		break;
 	case 5:
-		n = 5;
 		if (EQN("DEFMACRO"))
 			k = K_MACRO;
+		else if (EQN("DEFCLASS"))
+			k = K_CLASS;
+		break;
+	case 6:
+		if (EQN("DEFSTRUCT"))
+			k = K_STRUCT;
+		else if (EQN("DEFMETHOD"))
+			k = K_METHOD;
+		break;
+	case 7:
+		if (EQN("DEFGENERIC"))
+			k = K_GENERIC;
 		break;
 	case 8:
-		n = 8;
 		if (EQN("DEFCONSTANT"))
 			k = K_CONST;
+		break;
+	case 9:
+		if (EQN("DEFPARAMETER"))
+			k = K_PARAMETER;
 		break;
 	}
 #undef EQN
@@ -150,33 +246,29 @@ static int  lisp_hint2kind (const vString *const hint)
 }
 
 /* TODO: implement this in hashtable. */
-static int  elisp_hint2kind (const vString *const hint)
+static int elisp_hint2kind (struct lispKindHint *hint, const char *namespace CTAGS_ATTR_UNUSED)
 {
 	int k = eK_UNKNOWN;
-	int n;
+	int n = vStringLength (hint->str) - 4;
 
 	/* 4 means strlen("(def"). */
-#define EQN(X) strncmp(vStringValue (hint) + 4, &X[3], n) == 0
-	switch (vStringLength (hint) - 4)
+#define EQN(X) strncmp(vStringValue (hint->str) + 4, &X[3], n) == 0
+	switch (n)
 	{
 	case 2:
-		n = 2;
 		if (EQN("defun"))
 			k = eK_FUNCTION;
 		break;
 	case 3:
-		n = 3;
 		if (EQN("defvar"))
 			k = eK_VARIABLE;
 		else if (EQN("defun*"))
 			k = eK_FUNCTION;
 		break;
 	case 4:
-		n = 4;
 		if (EQN("defface"))
 			k = eK_FACE;
 	case 5:
-		n = 5;
 		if (EQN("defconst"))
 			k = eK_CONST;
 		else if (EQN("defmacro"))
@@ -191,7 +283,6 @@ static int  elisp_hint2kind (const vString *const hint)
 			k = eK_THEME;
 		break;
 	case 6:
-		n = 6;
 		if (EQN("defcustom"))
 			k = eK_CUSTOM;
 		else if (EQN("defsubst*"))
@@ -200,49 +291,40 @@ static int  elisp_hint2kind (const vString *const hint)
 			k = eK_MACRO;
 		break;
 	case 7:
-		n = 7;
 		if (EQN("define-key"))
 			k = KIND_GHOST_INDEX;
 		break;
 	case 9:
-		n = 9;
 		if (EQN("defvar-local"))
 			k = eK_VARIABLE;
 		else if (EQN("define-error"))
 			k = eK_ERROR;
 		break;
 	case 8:
-		n = 8;
 		if (EQN("defvaralias"))
 			k = eK_VARALIAS;
 		break;
 	case 10:
-		n = 10;
 		if (EQN("define-inline"))
 			k = eK_INLINE;
 		break;
 	case 14:
-		n = 14;
 		if (EQN("define-minor-mode"))
 			k = eK_MINOR_MODE;
 		break;
 	case 16:
-		n = 16;
 		if (EQN("define-derived-mode"))
 			k = eK_DERIVED_MODE;
 		break;
 	case 21:
-		n = 21;
 		if (EQN("define-global-minor-mode"))
 			k = eK_MINOR_MODE;
 		break;
 	case 25:
-		n = 25;
 		if (EQN("define-globalized-minor-mode"))
 			k = eK_MINOR_MODE;
 		break;
 	case 27:
-		n = 27;
 		if (EQN("define-obsolete-function-alias"))
 			k = eK_ALIAS;
 		break;
@@ -251,103 +333,193 @@ static int  elisp_hint2kind (const vString *const hint)
 	return k;
 }
 
-static void L_getit (vString *const name, const unsigned char *dbp,
-					 bool case_insensitive,
-					 int (*hint2kind) (const vString *),
-					 const vString *const kind_hint)
+extern int lispGetIt (struct lispDialect *dialect,
+					  vString *const name, const unsigned char *dbp, struct lispKindHint *kind_hint,
+					  const char *namespace)
 {
-	const unsigned char *p;
+	int index = CORK_NIL;
 
 	if (*dbp == '\'')  /* Skip prefix quote */
 		dbp++;
-	else if (*dbp == '(' && L_isquote (dbp, case_insensitive))  /* Skip "(quote " */
+	else if (*dbp == '(' && L_isquote (dbp, dialect->case_insensitive))  /* Skip "(quote " */
 	{
 		dbp += 7;
 		while (isspace (*dbp))
 			dbp++;
 	}
-	for (p=dbp ; *p!='\0' && *p!='(' && !isspace (*p) && *p!=')' ; p++)
+	else if (*dbp == '(' && L_issetf (dbp, dialect->case_insensitive)) /* Skip "(setf " */
+	{
+		dbp += 6;
+		while (isspace (*dbp))
+			dbp++;
+	}
+	for (const unsigned char *p = dbp;
+		 *p != '\0' && *p != '(' && !isspace (*p) && *p != ')';
+		 p++)
 		vStringPut (name, *p);
 
 	if (vStringLength (name) > 0)
 	{
-		int kind = hint2kind (kind_hint);
+		int kind = dialect->definer2kind(kind_hint, namespace);
+		const char *definer = NULL;
+
+		if (kind == dialect->unknown_kind)
+		{
+			definer = vStringValue(kind_hint->str);
+			if (definer[0] == '(')
+				definer++;
+		}
+
 		if (kind != KIND_GHOST_INDEX)
-			makeSimpleTag (name, kind);
+		{
+			index = makeSimpleTag (name, kind);
+			if (dialect->definer_field && dialect->definer_field->enabled
+				&& definer && index != CORK_NIL)
+				attachParserFieldToCorkEntry (index, dialect->definer_field->ftype, definer);
+		}
 	}
 	vStringClear (name);
+
+	return index;
 }
 
 /* Algorithm adapted from from GNU etags.
  */
-static void findLispTagsCommon (bool case_insensitive,
-								bool has_namespace,
-								int (*hint2kind) (const vString *))
+extern void findLispTagsCommon (struct lispDialect *dialect)
 {
 	vString *name = vStringNew ();
-	vString *kind_hint = vStringNew ();
-	const unsigned char* p;
+	struct lispKindHint kind_hint = {0};
+	const unsigned char* line;
 
+	kind_hint.str = vStringNew ();
 
-	while ((p = readLineFromInputFile ()) != NULL)
+	while ((line = readLineFromInputFile ()) != NULL)
 	{
+		const unsigned char *p = line;
+
+		if (dialect->skip_initial_spaces)
+		{
+			while (isspace ((unsigned char) *p))
+				p++;
+		}
+
 		if (*p == '(')
 		{
-			if (L_isdef (p, case_insensitive))
+			kind_hint.isDefResult = dialect->is_def (dialect, p);
+			if (kind_hint.isDefResult.is_def)
 			{
-				vStringClear (kind_hint);
+				vStringClear (kind_hint.str);
 				while (*p != '\0' && !isspace (*p))
 				{
-					vStringPut (kind_hint,
-								case_insensitive? toupper(*p): *p);
+					vStringPut (kind_hint.str,
+								dialect->case_insensitive? toupper(*p): *p);
 					p++;
 				}
-				while (isspace (*p))
-					p++;
-				L_getit (name, p, case_insensitive, hint2kind, kind_hint);
+
+
+				if (dialect->lambda_syntax_sugar)
+				{
+					/* Skip over open parens and white space:
+					   (def ((foo
+					   -----^^
+					 */
+					do {
+						while (*p != '\0' && (isspace (*p) || *p == '('))
+							p++;
+						if (*p == '\0')
+							p = line = readLineFromInputFile ();
+						else
+							break;
+					} while (line);
+					if (line == NULL)
+						break;
+				}
+				else
+				{
+					while (isspace (*p))
+						p++;
+				}
+				dialect->get_it(dialect, name, p, &kind_hint, "");
 			}
-			else if (has_namespace)
+			else if (dialect->namespace_sep != 0)
 			{
+				vString *namespace = vStringNew();
 				do
+				{
+					if (*p != '(')
+						vStringPut (namespace, *p);
 					p++;
+				}
 				while (*p != '\0' && !isspace (*p)
-						&& *p != ':' && *p != '(' && *p != ')');
-				if (*p == ':')
+						&& *p != dialect->namespace_sep && *p != '(' && *p != ')');
+				if (*p == dialect->namespace_sep)
 				{
 					do
-						p++;
-					while (*p == ':');
-
-					if (L_isdef (p - 1, case_insensitive))
 					{
-						vStringClear (kind_hint);
+						vStringPut (namespace, *p);
+						p++;
+					}
+					while (*p == dialect->namespace_sep);
+
+					kind_hint.isDefResult = dialect->is_def (dialect, p - 1);
+					if (kind_hint.isDefResult.is_def)
+					{
+						vStringClear (kind_hint.str);
 						while (*p != '\0' && !isspace (*p))
 						{
-							vStringPut (kind_hint,
-										case_insensitive? toupper(*p): *p);
+							vStringPut (kind_hint.str,
+										dialect->case_insensitive? toupper(*p): *p);
 							p++;
 						}
 						while (isspace (*p))
 							p++;
-						L_getit (name, p, case_insensitive, hint2kind, kind_hint);
+						dialect->get_it(dialect, name, p, &kind_hint, vStringValue (namespace));
 					}
 				}
+				vStringDelete (namespace);
 			}
 		}
 	}
 	vStringDelete (name);
-	vStringDelete (kind_hint);
+	vStringDelete (kind_hint.str);
 }
 
 static void findLispTags (void)
 {
-	findLispTagsCommon (true, true, lisp_hint2kind);
+	struct lispDialect lisp_dialect = {
+		.definer2kind = lisp_hint2kind,
+		.case_insensitive = true,
+		.namespace_sep = ':',
+		.unknown_kind = K_UNKNOWN,
+		.definer_field = LispFields + F_DEFINER,
+		.skip_initial_spaces = false,
+		.lambda_syntax_sugar = false,
+		.is_def = lispIsDef,
+		.get_it = lispGetIt,
+		.scope = CORK_NIL,
+	};
+
+	findLispTagsCommon (&lisp_dialect);
 }
 
 static void findEmacsLispTags (void)
 {
-	findLispTagsCommon (false, false, elisp_hint2kind);
+	struct lispDialect elisp_dialect = {
+		.definer2kind = elisp_hint2kind,
+		.case_insensitive = false,
+		.namespace_sep = 0,
+		.unknown_kind = eK_UNKNOWN,
+		.definer_field = EmacsLispFields + eF_DEFINER,
+		.skip_initial_spaces = false,
+		.lambda_syntax_sugar = false,
+		.is_def = lispIsDef,
+		.get_it = lispGetIt,
+		.scope = CORK_NIL,
+	};
+
+	findLispTagsCommon (&elisp_dialect);
 }
+
 
 extern parserDefinition* LispParser (void)
 {
@@ -363,10 +535,15 @@ extern parserDefinition* LispParser (void)
 	parserDefinition* def = parserNew ("Lisp");
 	def->kindTable      = LispKinds;
 	def->kindCount  = ARRAY_SIZE (LispKinds);
+	def->fieldTable = LispFields;
+	def->fieldCount = ARRAY_SIZE (LispFields);
 	def->extensions = extensions;
 	def->aliases = aliases;
 	def->parser     = findLispTags;
 	def->selectLanguage = selectors;
+	def->useCork = CORK_QUEUE;
+	def->versionCurrent = 1;
+	def->versionAge = 1;
 	return def;
 }
 
@@ -382,8 +559,13 @@ extern parserDefinition* EmacsLispParser (void)
 	parserDefinition* def = parserNew ("EmacsLisp");
 	def->kindTable      = EmacsLispKinds;
 	def->kindCount  = ARRAY_SIZE (EmacsLispKinds);
+	def->fieldTable = EmacsLispFields;
+	def->fieldCount = ARRAY_SIZE (EmacsLispFields);
 	def->extensions = extensions;
 	def->aliases = aliases;
 	def->parser     = findEmacsLispTags;
+	def->useCork = CORK_QUEUE;
+	def->versionCurrent = 1;
+	def->versionAge = 1;
 	return def;
 }

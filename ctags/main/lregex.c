@@ -1084,9 +1084,12 @@ static void common_flag_extra_long (const char* const s, const char* const v, vo
 		return;
 	}
 
-	cdata->ptrn->xtagType = getXtagTypeForNameAndLanguage (v, cdata->owner);
+	langType lang = (cdata->ptrn->foreign_lang == LANG_IGNORE)
+		? cdata->owner
+		: cdata->ptrn->foreign_lang;
+	cdata->ptrn->xtagType = getXtagTypeForNameAndLanguage (v, lang);
 	if (cdata->ptrn->xtagType == XTAG_UNKNOWN)
-		error (WARNING, "no such extra \"%s\" in %s", v, getLanguageName(cdata->owner));
+		error (WARNING, "no such extra \"%s\" in %s", v, getLanguageName(lang));
 }
 
 
@@ -1134,10 +1137,14 @@ static void common_flag_field_long (const char* const s, const char* const v, vo
 	}
 
 	fname = eStrndup (v, tmp - v);
-	ftype = getFieldTypeForNameAndLanguage (fname, cdata->owner);
+
+	langType lang = (ptrn->foreign_lang == LANG_IGNORE)
+		? cdata->owner
+		: ptrn->foreign_lang;
+	ftype = getFieldTypeForNameAndLanguage (fname, lang);
 	if (ftype == FIELD_UNKNOWN)
 	{
-		error (WARNING, "no such field \"%s\" in %s", fname, getLanguageName(cdata->owner));
+		error (WARNING, "no such field \"%s\" in %s", fname, getLanguageName(lang));
 		eFree (fname);
 		return;
 	}
@@ -1267,9 +1274,9 @@ static flagDefinition commonSpecFlagDef[] = {
 	  "\"MESSAGE\"", "print the given MESSAGE at WARNING level"},
 #define EXPERIMENTAL "_"
 	{ '\0',  EXPERIMENTAL "extra", NULL, common_flag_extra_long ,
-	  "EXTRA", "record the tag only when the extra is enabled"},
+	  "EXTRA", "record the tag only when the (foreign) extra is enabled"},
 	{ '\0',  EXPERIMENTAL "field", NULL, common_flag_field_long ,
-	  "FIELD:VALUE", "record the matched string(VALUE) to parser own FIELD of the tag"},
+	  "FIELD:VALUE", "record the matched string(VALUE) to the (foreign) language specific FIELD of the tag"},
 	{ '\0',  EXPERIMENTAL "role", NULL, common_flag_role_long,
 	  "ROLE", "set the given ROLE to the roles field"},
 	{ '\0',  EXPERIMENTAL "anonymous", NULL, common_flag_anonymous_long,
@@ -1691,7 +1698,7 @@ static void fillEndLineFieldOfUpperScopes (struct lregexControlBlock *lcb, unsig
 	int n = lcb->currentScope;
 
 	while ((entry = getEntryInCorkQueue (n))
-		   && (entry->extensionFields._endLine == 0))
+		   && (getTagEndLine (entry) == 0))
 	{
 		setTagEndLine (entry, endline);
 		n = entry->extensionFields.scopeIndex;
@@ -1756,7 +1763,7 @@ static void matchTagPattern (struct lregexControlBlock *lcb,
 	{
 		tagEntryInfo *entry = getEntryInCorkQueue (lcb->currentScope);
 
-		if (entry && (entry->extensionFields._endLine == 0))
+		if (entry && (getTagEndLine (entry) == 0))
 		{
 			setTagEndLine (entry, getInputLineNumberInRegPType(patbuf->regptype, offset));
 
@@ -1767,8 +1774,8 @@ static void matchTagPattern (struct lregexControlBlock *lcb,
 			 * the new scope. There is a gap. We must adjust the "end:" field here.
 			 */
 			if ((patbuf->scopeActions & SCOPE_REF_AFTER_POP) &&
-				entry->extensionFields._endLine > 1)
-				setTagEndLine (entry, entry->extensionFields._endLine - 1);
+				getTagEndLine (entry) > 1)
+				setTagEndLine (entry, getTagEndLine (entry) - 1);
 		}
 
 		lcb->currentScope = entry? entry->extensionFields.scopeIndex: CORK_NIL;
@@ -1996,7 +2003,7 @@ static bool matchRegexPattern (struct lregexControlBlock *lcb,
 	regmatch_t pmatch [BACK_REFERENCE_COUNT];
 	int match;
 	regexPattern* patbuf = entry->pattern;
-	struct guestSpec  *guest = &patbuf->guest;
+	struct guestSpec *guest = &patbuf->guest;
 
 	if (patbuf->disabled && *(patbuf->disabled))
 		return false;
@@ -2073,7 +2080,7 @@ static bool matchMultilineRegexPattern (struct lregexControlBlock *lcb,
 	const char *current;
 	regexPattern* patbuf = entry->pattern;
 	struct mGroupSpec *mgroup = &patbuf->mgroup;
-	struct guestSpec  *guest = &patbuf->guest;
+	struct guestSpec *guest = &patbuf->guest;
 
 	bool result = false;
 	regmatch_t pmatch [BACK_REFERENCE_COUNT];
@@ -2234,7 +2241,22 @@ extern void notifyRegexInputStart (struct lregexControlBlock *lcb)
 
 extern void notifyRegexInputEnd (struct lregexControlBlock *lcb)
 {
+	/* Push a placeholder tag representing the end of input file.
+	 * From .ctags code, you can refer the placeholder tag with ".".
+	 * The typical code pattern is ". :line":, pushing the line
+	 * number of the last line of the input file.
+	 */
+	int index = makePlaceholder ("EndOfInput");
+	optscriptSetup (optvm, lcb->local_dict, index);
 	scriptEvalHook (optvm, lcb, SCRIPT_HOOK_SEQUEL);
+	optscriptTeardown (optvm, lcb->local_dict);
+
+	unsigned int garbage;
+	if ((garbage = opt_vm_ostack_count (optvm)) > 0)
+		error (WARNING, "[%s] %u objects are left on the operand stack: %s",
+			   getLanguageName (lcb->owner), garbage,
+			   getInputFileName ());
+
 	set_current_lcb (optvm, NULL);
 	opt_vm_clear (optvm, false);
 	opt_dict_clear (lcb->local_dict);
@@ -2345,6 +2367,10 @@ static regexPattern *addTagRegexInternal (struct lregexControlBlock *lcb,
 		else
 			error (WARNING, "language: %s[%u]", getLanguageName (lcb->owner),
 				   ptrArrayCount (lcb->entries[regptype]));
+
+		struct flagDefsDescriptor desc = choose_backend (flags, regptype, false);
+		error (WARNING, "Failed in compiling the regex pattern with \"%s\" regex engine",
+			   desc.backend->name);
 		return NULL;
 	}
 
@@ -2454,6 +2480,9 @@ extern void addTagMultiLineRegex (struct lregexControlBlock *lcb, const char* co
 {
 	regexPattern *ptrn = addTagRegexInternal (lcb, TABLE_INDEX_UNUSED,
 											  REG_PARSER_MULTI_LINE, regex, name, kinds, flags, disabled);
+	if (!ptrn)
+		return;
+
 	if (ptrn->mgroup.forLineNumberDetermination == NO_MULTILINE)
 	{
 		if (hasNameSlot(ptrn))
@@ -2556,6 +2585,9 @@ static void addTagRegexOption (struct lregexControlBlock *lcb,
 	{
 		regexPattern *ptrn = addTagRegexInternal (lcb, table_index, regptype, regex_pat, name, kinds, flags,
 												  NULL);
+		if (!ptrn)
+			goto out;
+
 		if (regptype == REG_PARSER_MULTI_LINE
 			&& ptrn->mgroup.forLineNumberDetermination == NO_MULTILINE)
 		{
@@ -2567,6 +2599,7 @@ static void addTagRegexOption (struct lregexControlBlock *lcb,
 		}
 	}
 
+ out:
 	eFree (regex_pat);
 }
 
@@ -2880,7 +2913,7 @@ static struct regexTable * matchMultitableRegexTable (struct lregexControlBlock 
 			continue;
 
 		regexPattern *ptrn = entry->pattern;
-		struct guestSpec  *guest = &ptrn->guest;
+		struct guestSpec *guest = &ptrn->guest;
 
 		Assert (ptrn);
 
@@ -3313,7 +3346,7 @@ static void scriptEvalHook (OptVM *vm, struct lregexControlBlock *lcb, enum scri
 		EsObject * e = optscriptEval (vm, code);
 		if (es_error_p (e))
 			error (WARNING, "error when evaluating hook[%d] code: %s",
-				   hook, (char *)ptrArrayItem (lcb->hook[i], i));
+				   hook, (char *)ptrArrayItem (lcb->hook[hook], i));
 	}
 }
 
@@ -3851,17 +3884,18 @@ static EsObject* lrop_get_scope_depth (OptVM *vm, EsObject *name)
 {
 	struct lregexControlBlock *lcb = get_current_lcb (vm);
 	int scope = lcb->currentScope;
+	int depth = 0;
 
 	while (scope != CORK_NIL)
 	{
 		tagEntryInfo *e = getEntryInCorkQueue (scope);
 		if (!e)
 			break;
-
+		depth++;
 		scope = e->extensionFields.scopeIndex;
 	}
 
-	EsObject *q = es_integer_new (scope);
+	EsObject *q = es_integer_new (depth);
 	if (es_error_p(q))
 		return q;
 
@@ -4244,11 +4278,11 @@ static EsObject *lrop_intervaltab (OptVM *vm, EsObject *name)
 	else if (es_object_get_type (nobj) == OPT_TYPE_TAG)
 	{
 		tagEntryInfo *e = es_pointer_get (nobj);
-		if (e->extensionFields._endLine)
-			parent =  queryIntervalTabByRange(e->lineNumber,
-											  e->extensionFields._endLine);
-		else
+		if (getTagEndLine (e) == 0)
 			parent = queryIntervalTabByLine(e->lineNumber);
+		else
+			parent = queryIntervalTabByRange(e->lineNumber,
+											 getTagEndLine(e));
 	}
 	else if (es_object_get_type (nobj) == OPT_TYPE_MATCHLOC)
 	{
@@ -4395,7 +4429,7 @@ static struct optscriptOperatorRegistration lropOperators [] = {
 		.name     = "_foreignreftag",
 		.fn       = lrop_make_foreignreftag,
 		.arity    = -1,
-		.help_str = "name:str lang:name kind:name role:name matchloc _FOREIGNREFTAG tag%"
+		.help_str = "name:str lang:name kind:name role:name|null matchloc _FOREIGNREFTAG tag%"
 		"name:str lang:name|null kind:name role:name|null _FOREIGNREFTAG tag%",
 	},
 	{
@@ -4557,6 +4591,19 @@ static struct optscriptOperatorRegistration lropOperators [] = {
 	},
 };
 
+extern bool installOptscriptFieldAccessor (fieldType ftype)
+{
+	/* This function is called via defineField().
+	   defineField() is called via --fielddef option of built-in parsers
+	   defining their specific fields.
+	   built-in parsers are initialized lazily in the current implementation.
+	   optvm is initialized earlier than parsers. */
+	Assert (!es_null(lregex_dict));
+
+	optscriptInstallFieldAccessor (lregex_dict, ftype);
+	return true;
+}
+
 extern void initRegexOptscript (void)
 {
 	if (!regexAvailable)
@@ -4576,6 +4623,7 @@ extern void initRegexOptscript (void)
 	OPTSCRIPT_ERR_UNKNOWNLANGUAGE = es_error_intern ("unknownlanguage");
 	OPTSCRIPT_ERR_UNKNOWNKIND = es_error_intern ("unknownkind");
 	OPTSCRIPT_ERR_UNKNOWNROLE = es_error_intern ("unknownrole");
+	OPTSCRIPT_ERR_FIELDRESET = es_error_intern ("fieldreset");
 
 	optscriptInstallProcs (lregex_dict, lrop_get_match_string_named_group);
 

@@ -1094,12 +1094,15 @@ static TMParserMapGroup group_GDSCRIPT[] = {
 };
 
 static TMParserMapEntry map_CLOJURE[] = {
+	{'Y', tm_tag_undef_t},      // unknown
 	{'f', tm_tag_function_t},   // function
 	{'n', tm_tag_namespace_t},  // namespace
+	{'m', tm_tag_macro_t},      // macro
 };
 static TMParserMapGroup group_CLOJURE[] = {
 	{N_("Namespaces"), TM_ICON_NAMESPACE, tm_tag_namespace_t},
 	{N_("Functions"), TM_ICON_METHOD, tm_tag_function_t},
+	{N_("Macros"), TM_ICON_MACRO, tm_tag_macro_t},
 };
 
 static TMParserMapEntry map_LISP[] = {
@@ -1108,12 +1111,22 @@ static TMParserMapEntry map_LISP[] = {
 	{'v', tm_tag_variable_t},  // variable
 	{'m', tm_tag_macro_t},     // macro
 	{'c', tm_tag_field_t},     // const
+	{'t', tm_tag_typedef_t},   // type
+	{'C', tm_tag_class_t},     // class
+	{'s', tm_tag_struct_t},    // struct
+	{'M', tm_tag_method_t},    // method
+	{'G', tm_tag_undef_t},     // generic
+	{'p', tm_tag_local_var_t}, // parameter
 };
 static TMParserMapGroup group_LISP[] = {
 	{N_("Functions"), TM_ICON_METHOD, tm_tag_function_t},
 	{N_("Macros"), TM_ICON_MACRO, tm_tag_macro_t},
-	{N_("Variables"), TM_ICON_VAR, tm_tag_variable_t},
+	{N_("Variables"), TM_ICON_VAR, tm_tag_variable_t | tm_tag_local_var_t},
 	{N_("Constants"), TM_ICON_VAR, tm_tag_field_t},
+	{N_("Types"), TM_ICON_STRUCT, tm_tag_typedef_t},
+	{N_("Classes"), TM_ICON_CLASS, tm_tag_class_t},
+	{N_("Structs"), TM_ICON_STRUCT, tm_tag_struct_t},
+	{N_("Methods"), TM_ICON_METHOD, tm_tag_method_t},
 };
 
 static TMParserMapEntry map_TYPESCRIPT[] = {
@@ -1276,6 +1289,8 @@ static TMParserMapEntry map_MESON[] = {
 	{'b', tm_tag_function_t},    // benchmark
 	{'r', tm_tag_member_t},      // run
 	{'m', tm_tag_package_t},     // module
+	{'D', tm_tag_struct_t},      // cfgdata
+	{'C', tm_tag_variable_t},    // cfgvar
 };
 static TMParserMapGroup group_MESON[] = {
 	{N_("Projects"), TM_ICON_CLASS, tm_tag_namespace_t},
@@ -1287,6 +1302,8 @@ static TMParserMapGroup group_MESON[] = {
 	{N_("Benchmark Targets"), TM_ICON_METHOD, tm_tag_function_t},
 	{N_("Run Targets"), TM_ICON_METHOD, tm_tag_member_t},
 	{N_("Tests"), TM_ICON_NONE, tm_tag_field_t},
+	{N_("Configuration Data Objects"), TM_ICON_STRUCT, tm_tag_struct_t},
+	{N_("Configuration Variables"), TM_ICON_VAR, tm_tag_variable_t},
 };
 
 static TMParserMapEntry map_SCSS[] = {
@@ -1297,6 +1314,8 @@ static TMParserMapEntry map_SCSS[] = {
 	{'P', tm_tag_enum_t},        // placeholder
 	{'i', tm_tag_variable_t},    // id
 	{'z', tm_tag_local_var_t},   // parameter
+	{'n', tm_tag_namespace_t},   // namespace
+	{'M', tm_tag_package_t},     // module
 };
 static TMParserMapGroup group_SCSS[] = {
 	{N_("Mixins"), TM_ICON_MACRO, tm_tag_macro_t},
@@ -1305,6 +1324,8 @@ static TMParserMapGroup group_SCSS[] = {
 	{N_("Classes"), TM_ICON_CLASS, tm_tag_class_t},
 	{N_("Placeholders"), TM_ICON_OTHER, tm_tag_enum_t},
 	{N_("ID Selectors"), TM_ICON_VAR, tm_tag_variable_t | tm_tag_local_var_t},
+	{N_("Namespaces"), TM_ICON_NAMESPACE, tm_tag_namespace_t},
+	{N_("Modules"), TM_ICON_NAMESPACE, tm_tag_package_t},
 };
 
 static TMParserMapEntry map_TERRAFORM[] = {
@@ -1314,12 +1335,13 @@ static TMParserMapEntry map_TERRAFORM[] = {
 	{'v', tm_tag_variable_t},    // variable
 	{'p', tm_tag_macro_t},       // provider
 	{'o', tm_tag_function_t},    // output
+	{'l', tm_tag_local_var_t},   // local
 };
 static TMParserMapGroup group_TERRAFORM[] = {
 	{N_("Resources"), TM_ICON_CLASS, tm_tag_class_t},
 	{N_("Data"), TM_ICON_OTHER, tm_tag_enum_t},
 	{N_("Modules"), TM_ICON_NAMESPACE, tm_tag_package_t},
-	{N_("Variable"), TM_ICON_VAR, tm_tag_variable_t},
+	{N_("Variable"), TM_ICON_VAR, tm_tag_variable_t | tm_tag_local_var_t},
 	{N_("Providers"), TM_ICON_MACRO, tm_tag_macro_t},
 	{N_("Outputs"), TM_ICON_METHOD, tm_tag_function_t},
 };

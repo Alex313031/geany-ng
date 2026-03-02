@@ -43,7 +43,8 @@
 	VarlinkParser, \
 	KotlinParser,  \
 	ThriftParser,  \
-	ElmParser
+	ElmParser,     \
+	TomlParser
 #else
 #define PEG_PARSER_LIST
 #endif
@@ -76,6 +77,7 @@
 	ClojureParser, \
 	CMakeParser, \
 	CParser, \
+	CargoParser, \
 	CppParser, \
 	CPreProParser, \
 	CssParser, \
@@ -86,6 +88,7 @@
 	CobolVariableParser, \
 	CUDAParser, \
 	DParser, \
+	DbusServiceParser, \
 	DiffParser, \
 	DtdParser, \
 	DTSParser, \
@@ -105,6 +108,7 @@
 	GDScriptParser, \
 	GemSpecParser, \
 	GoParser, \
+	GoModParser, \
 	GPerfParser, \
 	HaskellParser, \
 	HaxeParser, \
@@ -116,6 +120,7 @@
 	JavaParser, \
 	JavaPropertiesParser, \
 	JavaScriptParser, \
+	JNIParser, \
 	JsonParser, \
 	JuliaParser, \
 	KconfigParser, \
@@ -133,6 +138,7 @@
 	MesonOptionsParser, \
 	MooseParser, \
 	MyrddinParser, \
+	NftablesParser, \
 	NsisParser, \
 	ObjcParser, \
 	OcamlParser, \
@@ -145,9 +151,11 @@
 	PkgConfigParser, \
 	PodParser, \
 	PowerShellParser, \
+	PrologParser, \
 	ProtobufParser, \
 	PuppetManifestParser, \
 	PythonParser, \
+	PythonEntryPointsParser, \
 	PythonLoggingConfigParser, \
 	QemuHXParser, \
 	QtMocParser, \
@@ -168,10 +176,13 @@
 	S4ClassParser, \
 	SchemeParser, \
 	SCSSParser, \
-	ShParser, \
+	SELinuxInterfaceParser, \
+	SELinuxTypeEnforcementParser, \
 	SinexParser, \
+	ShParser, \
 	SlangParser, \
 	SmlParser, \
+	ScdocParser, \
 	SqlParser, \
 	SystemdUnitParser, \
 	SystemTapParser, \
@@ -184,6 +195,7 @@
 	TTCNParser, \
 	Txt2tagsParser, \
 	TypeScriptParser, \
+	TypeSpecParser, \
 	VParser, \
 	VeraParser, \
 	VerilogParser, \

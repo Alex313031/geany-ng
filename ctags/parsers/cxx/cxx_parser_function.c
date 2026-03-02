@@ -18,7 +18,7 @@
 
 #include "parse.h"
 #include "vstring.h"
-#include "../cpreprocessor.h"
+#include "../x-cpreprocessor.h"
 #include "debug.h"
 #include "keyword.h"
 #include "read.h"
@@ -294,6 +294,7 @@ int cxxParserMaybeParseKnRStyleFunctionDefinition(void)
 			pParenthesis->pChain->pTail->bFollowedBySpace = false;
 		}
 
+		// We don't have to consider export'ed status here; the input is written in C!
 		tag->isFileScope = (g_cxx.uKeywordState & CXXParserKeywordStateSeenStatic) &&
 				!isInputHeaderFile();
 
@@ -319,6 +320,7 @@ int cxxParserMaybeParseKnRStyleFunctionDefinition(void)
 			vStringValue(pIdentifier->pszWord)
 		);
 
+	// We don't have to propagate export'ed status; the input is written in C!
 	cxxScopePush(pIdentifier,CXXScopeTypeFunction,CXXScopeAccessUnknown);
 
 	// emit parameters
@@ -677,6 +679,41 @@ static bool cxxParserisConstructor(const char *szFuncname)
 	return false;
 }
 
+static CXXTokenChain * cxxParserLookForFunctionNameOnlyInParenthesis(CXXTokenChain * pChain)
+{
+	if (pChain->iCount == 3) {
+		CXXToken *pToken = cxxTokenChainAt(pChain,1);
+
+		// It rejects void keyword implicitly to examine the token is an Identifier.
+		if (cxxTokenTypeIs(pToken, CXXTokenTypeIdentifier))
+			return pChain;
+		if (cxxTokenTypeIs(pToken, CXXTokenTypeParenthesisChain))
+			return cxxParserLookForFunctionNameOnlyInParenthesis(pToken->pChain);
+	} else if (pChain->iCount > 3) {
+		CXXToken *pBegin = cxxTokenChainAt(pChain,1);
+		CXXToken *pTmp = pBegin;
+		while (pTmp)
+		{
+			if (!cxxTokenTypeIsOneOf(pTmp,
+									CXXTokenTypeIdentifier | CXXTokenTypeMultipleColons))
+				break;
+			pTmp = pTmp->pNext;
+		}
+		if (pChain->pTail == pTmp)
+			return pChain;
+	}
+	return NULL;
+}
+
+static CXXTokenChain * cxxParserLookForFunctionNameInParenthesisFollowedByParameterList(CXXToken * pParenthesis)
+{
+	CXXToken *pNext = pParenthesis->pNext;
+
+	if (pNext && cxxTokenTypeIs(pNext, CXXTokenTypeParenthesisChain))
+		return cxxParserLookForFunctionNameOnlyInParenthesis(pParenthesis->pChain);
+	return NULL;
+}
+
 //
 // Look for a function signature in the specified chain.
 //
@@ -981,6 +1018,60 @@ bool cxxParserLookForFunctionSignature(
 		{
 			CXX_DEBUG_PRINT("Parenthesis at position 0, meaningless");
 			goto next_token;
+		}
+
+		// Before considering macros, here we examine (FUNC)(ARGS) sequence like:
+		//
+		//   myType (myFunc0)(args...);
+		//   myType ((myFunc1)(args...);
+		//   myType (myNs::myFunc2)(args...);
+		//
+		{
+			CXXTokenChain * pFnameInParenthesis =
+				cxxParserLookForFunctionNameInParenthesisFollowedByParameterList(pToken);
+
+			if (pFnameInParenthesis)
+			{
+				// If the current pToken is at the head of pChain, the following
+				// code chaining the pChain destructive way doesn't work. */
+				Assert(pChain->pHead != pToken);
+
+				int iChainLen = pFnameInParenthesis->iCount;
+				//       v----------- pFnameHead
+				// type (ns:f)(...)
+				//      ^   ^-------- pFnameTail
+				//       `----------- pToken, pFnameInParenthesis
+				//
+				CXXToken * pFnameHead = pFnameInParenthesis->pHead->pNext;
+				CXXToken * pFnameTail = pFnameInParenthesis->pTail->pPrev;
+
+				// Remove the name of function including namespace specifier
+				// from the pFnameInParenthesis; only `(' and `)' remain
+				// in the chain.
+				pFnameInParenthesis->pHead->pNext = pFnameInParenthesis->pTail;
+				pFnameInParenthesis->pTail->pPrev = pFnameInParenthesis->pHead;
+				pFnameInParenthesis->iCount = 2;
+
+				// Remove the parenthesis like:
+				//
+				//   type (ns::f)(...) => type ns::f(...)
+				//
+				cxxTokenReplaceWithTokens(pToken, pFnameHead, pFnameTail);
+				Assert(pFnameHead->pPrev);
+				cxxTokenDestroy(pToken);
+				// And adjust the chain length.
+				pChain->iCount += (iChainLen - 3);
+
+				// Restart the process from the name of function:
+				//   v----------------pToken
+				//   type ns::f(...)
+				//        ^-----------pFnameHead
+				//
+				pToken = pFnameHead->pPrev;
+
+				CXX_DEBUG_PRINT("Found a function name in parenthesis followed by parameter list");
+				goto next_token;
+			}
 		}
 
 		CXX_DEBUG_PRINT("Found interesting parenthesis chain: check for identifier");
@@ -1500,10 +1591,37 @@ int cxxParserEmitFunctionTags(
 			{
 				CXXToken * pScopeId = pInfo->pScopeStart;
 
-				pInfo->pScopeStart = cxxTokenChainNextTokenOfType(
+				while (1)
+				{
+					pInfo->pScopeStart = cxxTokenChainNextTokenOfType(
 						pInfo->pScopeStart,
-						CXXTokenTypeMultipleColons
-					);
+						CXXTokenTypeMultipleColons|CXXTokenTypeSmallerThanSign);
+
+					CXX_DEBUG_ASSERT(pInfo->pScopeStart,
+									 "We could find neither '::' nor '<'");
+					if (!pInfo->pScopeStart)
+					{
+						pInfo->pScopeStart = pInfo->pIdentifierStart;
+						break;
+					}
+
+					if (cxxTokenTypeIs(pInfo->pScopeStart, CXXTokenTypeMultipleColons))
+						break;	// Good!
+
+					if (cxxTokenTypeIs(pInfo->pScopeStart, CXXTokenTypeSmallerThanSign))
+					{
+						// Skip the template arguments.
+						// Should we add the template arguments to the scope? (FIXME)
+						pInfo->pScopeStart = cxxTokenChainSkipToEndOfTemplateAngleBracket(pInfo->pScopeStart);
+						CXX_DEBUG_ASSERT(pInfo->pScopeStart,
+										 "We could not find '>', the end of template argument(s)");
+						if (!pInfo->pScopeStart)
+						{
+							pInfo->pScopeStart = pInfo->pIdentifierStart;
+							break;
+						}
+					}
+				}
 
 				CXX_DEBUG_ASSERT(pInfo->pScopeStart,"We should have found a next token here");
 
@@ -1626,6 +1744,11 @@ int cxxParserEmitFunctionTags(
 				tag->isFileScope = !isInputHeaderFile();
 			}
 		}
+		// Overwrite the assigned value if the language object is export'ed.
+		tag->isFileScope = ((g_cxx.uKeywordState & CXXParserKeywordStateSeenExport)
+							|| cxxScopeIsExported())
+			? 0
+			: tag->isFileScope;
 
 		vString * pszSignature = cxxTokenChainJoin(pInfo->pParenthesis->pChain,NULL,0);
 		if(pInfo->pSignatureConst)
@@ -1999,7 +2122,7 @@ bool cxxParserTokenChainLooksLikeFunctionParameterList(
 
 	CXXToken * t = cxxTokenChainAt(tc,1);
 
-	bool bIsCPP = cxxParserCurrentLanguageIsCPP();
+	bool bIsC = ! (cxxParserCurrentLanguageIsCPP() || cxxParserCurrentLanguageIsCUDA());
 
 	for(;;)
 	{
@@ -2312,7 +2435,7 @@ try_again:
 		}
 
 		// assignment.
-		if(!bIsCPP)
+		if(bIsC)
 		{
 			CXX_DEBUG_LEAVE_TEXT(
 					"Found assignment, this doesn't look like valid C function parameter list"

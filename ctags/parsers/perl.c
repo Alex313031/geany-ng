@@ -16,7 +16,7 @@
 #include <string.h>
 
 #include "entry.h"
-#include "perl.h"
+#include "x-perl.h"
 #include "promise.h"
 #include "read.h"
 #include "routines.h"
@@ -1019,8 +1019,10 @@ extern parserDefinition* PerlParser (void)
 		/* cperl is an Emacs' editing mode for Perl source code  */
 		"cperl",
 		NULL };
-	static selectLanguage selectors [] = { selectByPickingPerlVersion,
-					       NULL };
+	static selectLanguage selectors [] = {
+		selectPerlOrPrologByDistinctiveToken,
+		selectByPickingPerlVersion,
+		NULL };
 	parserDefinition* def = parserNew ("Perl");
 	def->kindTable      = PerlKinds;
 	def->kindCount  = ARRAY_SIZE (PerlKinds);

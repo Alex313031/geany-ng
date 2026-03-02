@@ -2,8 +2,8 @@ ANSWER_TO_LIFEÃ16384Œoop÷0
 variable:   oop :: ANSWER_TO_LIFE
 APPROX_PIÃ8Œoop÷0
 field:      oop :: APPROX_PI
-MACROÃ65536Œoop÷0
-macro:      oop :: MACRO
+MACROÃ65536÷0
+macro:      MACRO
 TÃ8Œoop.ifclass÷0
 field:      oop.ifclass :: T
 a_classÃ1Œoop÷0

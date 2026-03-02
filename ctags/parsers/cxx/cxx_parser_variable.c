@@ -15,6 +15,7 @@
 #include "cxx_token_chain.h"
 #include "cxx_scope.h"
 #include "cxx_side_chain.h"
+#include "cxx_subparser_internal.h"
 
 #include "vstring.h"
 #include "read.h"
@@ -808,6 +809,8 @@ got_identifier:
 						(
 							(eScopeType == CXXScopeTypeNamespace) &&
 							(g_cxx.uKeywordState & CXXParserKeywordStateSeenStatic) &&
+							(!(g_cxx.uKeywordState & CXXParserKeywordStateSeenExport)) &&
+							(!cxxScopeIsExported()) &&
 							(!isInputHeaderFile())
 						) ||
 						// locals are always hidden
@@ -815,6 +818,8 @@ got_identifier:
 						(
 							(eScopeType != CXXScopeTypeNamespace) &&
 							(eScopeType != CXXScopeTypeFunction) &&
+							(!(g_cxx.uKeywordState & CXXParserKeywordStateSeenExport)) &&
+							(!cxxScopeIsExported()) &&
 							(!isInputHeaderFile())
 						)
 					);
@@ -875,6 +880,9 @@ got_identifier:
 			)
 		{
 			cxxScopePush(pIdentifier,CXXScopeTypeVariable,CXXScopeAccessPublic);
+			// We don't have to propagate the exported status to language objects
+			// under a variable.
+
 			cxxParserEmitTemplateParameterTags();
 			cxxScopePop();
 		} else {
@@ -923,6 +931,7 @@ got_identifier:
 			if (iCorkIndex != CORK_NIL)
 			{
 				cxxParserSetEndLineForTagInCorkQueue (iCorkIndex, t->iLineNumber);
+				cxxSubparserNotifyVariableBodyMaybe (iCorkIndex, t);
 				iCorkIndex = CORK_NIL;
 				if(iCorkIndexFQ != CORK_NIL)
 				{

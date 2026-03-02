@@ -47,6 +47,7 @@ struct rejection {
 };
 
 tagWriter uCtagsWriter = {
+	.oformat = "u-ctags",
 	.writeEntry = writeCtagsEntry,
 	.writePtagEntry = writeCtagsPtagEntry,
 	.printPtagByDefault = true,
@@ -55,6 +56,7 @@ tagWriter uCtagsWriter = {
 	.rescanFailedEntry = NULL,
 	.treatFieldAsFixed = treatFieldAsFixed,
 	.checkOptions = checkCtagsOptions,
+	.canPrintNullTag = false,
 #ifdef _WIN32
 	.overrideFilenameSeparator = overrideFilenameSeparator,
 #endif
@@ -88,6 +90,7 @@ static enum filenameSepOp overrideFilenameSeparator (enum filenameSepOp currentS
 #endif
 
 tagWriter eCtagsWriter = {
+	.oformat = "e-ctags",
 	.writeEntry = writeCtagsEntry,
 	.writePtagEntry = writeCtagsPtagEntry,
 	.printPtagByDefault = true,
@@ -95,8 +98,9 @@ tagWriter eCtagsWriter = {
 	.postWriteEntry = endECTagsFile,
 	.rescanFailedEntry = NULL,
 	.treatFieldAsFixed = treatFieldAsFixed,
-	.defaultFileName = CTAGS_FILE,
 	.checkOptions = checkCtagsOptions,
+	.canPrintNullTag = false,
+	.defaultFileName = CTAGS_FILE,
 };
 
 static bool hasTagEntryTabOrNewlineChar (const tagEntryInfo * const tag)
@@ -209,9 +213,31 @@ static int addParserFields (tagWriter *writer, MIO * mio, const tagEntryInfo *co
 		if (! isFieldEnabled (ftype))
 			continue;
 
+		unsigned int dt = getFieldDataType (ftype);
+		const char *val;
+
+		if (dt & FIELDTYPE_STRING)
+			val = escapeFieldValueFull (writer, tag, ftype, i);
+		else if (dt & FIELDTYPE_BOOL)
+			val = "";
+		else if (dt & FIELDTYPE_INTEGER)
+		{
+			long tmp;
+
+			val = escapeFieldValueFull (writer, tag, ftype, i);
+			if (!strToLong (val, 10, &tmp))
+				val = (val[0] == '\0')? "0": "1";
+		}
+		else
+		{
+			/* Not implemented */
+			AssertNotReached ();
+			val = "CTAGS INTERNAL BUG!";
+		}
+
+
 		length += mio_printf(mio, "\t%s:%s",
-							 getFieldName (ftype),
-							 escapeFieldValueFull (writer, tag, ftype, i));
+							 getFieldName (ftype), val);
 	}
 	return length;
 }

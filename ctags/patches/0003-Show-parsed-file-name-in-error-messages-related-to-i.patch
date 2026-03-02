@@ -1,0 +1,52 @@
+From ed0ad8c4905d249bbdecb58766d79c868bc8e979 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ji=C5=99=C3=AD=20Techet?= <techet@gmail.com>
+Date: Mon, 16 Jun 2025 17:50:11 +0200
+Subject: [PATCH 3/3] Show parsed file name in error messages related to
+ invalid promises
+
+---
+ ctags/main/promise.c | 4 +++-
+ ctags/main/read.c    | 4 ++--
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/ctags/main/promise.c b/ctags/main/promise.c
+index ad6865011..4e6b1568b 100644
+--- a/ctags/main/promise.c
++++ b/ctags/main/promise.c
+@@ -16,6 +16,7 @@
+ #include "promise_p.h"
+ #include "ptrarray.h"
+ #include "debug.h"
++#include "read.h"
+ #include "read_p.h"
+ #include "trashbox.h"
+ #include "xtag.h"
+@@ -70,7 +71,8 @@ static bool havePromise (const struct promise *p)
+ 		if (p->lang == q->lang &&
+ 			p->startLine == q->startLine && p->startColumn == q->startColumn)
+ 		{
+-			error (WARNING, "redundant promise: %s start(line: %lu, column: %ld, srcline: %lu), end(line: %lu, column: %ld)",
++			error (WARNING, "redundant promise when parsing %s: %s start(line: %lu, column: %ld, srcline: %lu), end(line: %lu, column: %ld)",
++			       getInputFileName (),
+ 			       q->lang != LANG_IGNORE? getLanguageName(q->lang): "*",
+ 			       q->startLine, q->startColumn, q->sourceLineOffset,
+ 			       q->endLine, q->endColumn);
+diff --git a/ctags/main/read.c b/ctags/main/read.c
+index 59c5e3c43..3b2b667ea 100644
+--- a/ctags/main/read.c
++++ b/ctags/main/read.c
+@@ -1490,9 +1490,9 @@ extern bool   pushArea (
+ 	return true;
+ 
+ fail:
+-	error (WARNING, "Failed to push area when parsing stream: IO error or invalid offsets: "
++	error (WARNING, "Failed to push area when parsing %s: IO error or invalid offsets: "
+ 	       "start(line: %lu, column: %ld, srcline: %lu), end(line: %lu, column: %ld)",
+-	       startLine, startColumn, sourceLineOffset, endLine, endColumn);
++	       getInputFileName (), startLine, startColumn, sourceLineOffset, endLine, endColumn);
+ 	mio_setpos (File.mio, &original);
+ 	return false;
+ }
+-- 
+2.39.5
+

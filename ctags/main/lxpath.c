@@ -26,8 +26,10 @@
 
 extern  void updateXMLTagLine (tagEntryInfo *e, xmlNode *node)
 {
-	unsigned long lineNumber = XML_GET_LINE (node);
-	updateTagLine (e, lineNumber, getInputFilePositionForLine (lineNumber));
+	unsigned long abs_line = translateLineNumber (XML_GET_LINE (node));
+	MIOPos rela_pos = getInputFilePositionForLine (abs_line);
+
+	updateTagLine (e, abs_line, rela_pos);
 }
 
 static void simpleXpathMakeTag (xmlNode *node,
@@ -170,8 +172,12 @@ static xmlDocPtr makeXMLDoc (void)
 	if (data)
 	{
 		xmlSetGenericErrorFunc (NULL, suppressWarning);
+#ifdef IS_xmlLineNumbersDefault_DEPRECATED
+		doc = xmlReadMemory((const char *)data, size, NULL, NULL, 0);
+#else
 		xmlLineNumbersDefault (1);
 		doc = xmlParseMemory((const char*)data, size);
+#endif
 	}
 
 	return doc;

@@ -35,6 +35,7 @@
 #include "selectors.h"
 #include "xtag.h"
 #include "ptrarray.h"
+#include "numarray.h"
 
 /*
  *	 MACROS
@@ -158,7 +159,8 @@ static roleDefinition SystemVerilogModuleRoles [] = {
 
 static kindDefinition VerilogKinds [] = {
  { true, 'c', "constant",	"constants (parameter, specparam)" },
- { true, 'd', "define",		"text macros" },
+ { true, 'd', "define",		"text macros",
+   .version = 1 },
  { true, 'e', "event",		"events" },
  { true, 'f', "function",	"functions" },
  { true, 'm', "module",		"modules",
@@ -173,7 +175,8 @@ static kindDefinition VerilogKinds [] = {
 
 static kindDefinition SystemVerilogKinds [] = {
  { true, 'c', "constant",	"constants (parameter, specparam, enum values)" },
- { true, 'd', "define",		"text macros" },
+ { true, 'd', "define",		"text macros",
+   .version = 1 },
  { true, 'e', "event",		"events" },
  { true, 'f', "function",	"functions" },
  { true, 'm', "module",		"modules",
@@ -324,7 +327,7 @@ static const struct keywordGroup verilogKeywords = {
 		"scalared", "showcancelled", "signed", "small", "specify",
 		"specparam", "strong0", "strong1", "supply0", "supply1", "table",
 		"task", "time", "tran", "tranif0", "tranif1", "tri", "tri0", "tri1",
-		"triand", "trior", "trireg", "unsigned1", "use", "uwire", "vectored",
+		"triand", "trior", "trireg", "unsigned", "use", "uwire", "vectored",
 		"wait", "wand", "weak0", "weak1", "while", "wire", "wor", "xnor", "xor",
 		NULL
 	},
@@ -704,10 +707,10 @@ static int vGetc (void)
 	return _vGetc (false);
 }
 
-// Is the first charactor in an identifier? [a-zA-Z_`]
+// Is the first character in an identifier? [a-zA-Z_`\\]
 static bool isWordToken (const int c)
 {
-	return (isalpha (c) || c == '_' || c == '`');
+	return (isalpha (c) || c == '_' || c == '`' || c == '\\');
 }
 
 // Is a charactor in an identifier? [a-zA-Z0-9_`$]
@@ -768,13 +771,24 @@ static int skipToSemiColon (int c)
 	return c;	// ';' or EOF
 }
 
+static bool isEscapedCharacter (int c)
+{
+	if (c != '\\')
+		return false;
+	c = vGetc ();
+	if (c == '"')
+		return true;
+	else
+		return false;
+}
+
 static int skipString (int c)
 {
 	if (c == '"')
 	{
 		do
 			c = vGetc ();
-		while (c != '"' && c != EOF);
+		while (isEscapedCharacter(c) || (c != '"' && c != EOF));
 	}
 	c = skipWhite (vGetc ());
 	return c;
@@ -861,12 +875,26 @@ static int _readWordToken (tokenInfo *const token, int c, bool skip)
 	Assert (isWordToken (c));
 
 	clearToken (token);
-	do
+	if (c == '\\')
 	{
-		vStringPut (token->name, c);
-		c = vGetc ();
-	} while (isIdentifierCharacter (c));
-	_updateKind (token);
+		// Escaped identifier (may be empty)
+		c = vGetc (); // skip leading '\'
+		while (isgraph (c))
+		{
+			vStringPut (token->name, c);
+			c = vGetc ();
+		}
+		token->kind = K_IDENTIFIER;
+	}
+	else
+	{
+		do
+		{
+			vStringPut (token->name, c);
+			c = vGetc ();
+		} while (isIdentifierCharacter (c));
+		_updateKind (token);
+	}
 
 	if (skip)
 		return skipWhite (c);
@@ -965,11 +993,12 @@ static int dropEndContext (tokenInfo *const token, int c)
 		{
 			dropContext ();
 			c = skipBlockName (token ,c);
-			if (currentContext->classScope)
+			while (currentContext->classScope)
 			{
 				verbose ("Dropping local context %s\n", vStringValue (currentContext->name));
 				currentContext = popToken (currentContext);
 			}
+			currentContext->virtual = false;
 		}
 		vStringDelete (endTokenName);
 	}
@@ -993,7 +1022,6 @@ static void createTagFull (tokenInfo *const token, verilogKind kind, int role, t
 			token->parameter = true;
 	}
 	Assert (kind >= 0 && kind != K_UNDEFINED && kind != K_IDENTIFIER);
-	Assert (vStringLength (token->name) > 0);
 
 	/* check if a container before kind is modified by prototype */
 	/* BTW should we create a context for a prototype? */
@@ -1018,7 +1046,8 @@ static void createTagFull (tokenInfo *const token, verilogKind kind, int role, t
 	updateTagLine (&tag, token->lineNumber, token->filePosition);
 
 	verbose ("Adding tag %s (kind %d)", vStringValue (token->name), kind);
-	if (currentContext->kind != K_UNDEFINED)
+	if (currentContext->kind != K_UNDEFINED
+		&& kind != K_DEFINE)	// a define macro should not be scoped. #4127
 	{
 		verbose (" to context %s\n", vStringValue (currentContext->name));
 		currentContext->lastKind = kind;
@@ -1163,6 +1192,30 @@ static int skipParameterAssignment (int c)
 	return c;
 }
 
+// Using LRM Annex A Formal syntax, The declaration of function and task can be combined
+// to describe as follows (always ignore parameter_value_assignment in the class_scope):
+// --------------------------------------------------------------------------------------------------
+//                                    |  class_scope  |               |  class_scope  |
+// [ function | task ] [ lifetime ] [ { class_name :: } return_type ] { class_name :: } function_name
+//                                  |       return_type field       | |     function_name field     |
+// --------------------------------------------------------------------------------------------------
+// tokenNameSaved : Store All word tokens after the [ function | task ] keyword except those in `#()`
+//                  If there is [ dynamic_override_specifiers ] before [ lifetime ], will also be stored
+//                      dynamic_override_specifiers ::= [ : initial | : extends ] [ : final ]
+// doubleColonPos : Record the position of `::` inserted into tokenNameSaved Array
+// return the index of first class_name in tokenNameSaved Array (return -1 if not exist)
+// NOTE: return_type field is ignored, only the class_scope of function_name field is concerned
+static int getFirstClassNameIndex (const ptrArray *const tokenNameSaved, const intArray *const doubleColonPos)
+{
+	const int colonsCount = intArrayCount (doubleColonPos);
+	if (colonsCount == 0 || intArrayLast (doubleColonPos) != (ptrArrayCount (tokenNameSaved) - 1))
+		return -1;
+	int curColon = colonsCount - 1;
+	while (curColon > 0 && intArrayItem (doubleColonPos, curColon) - intArrayItem (doubleColonPos, curColon - 1) == 1)
+		curColon--;
+	return intArrayItem (doubleColonPos, curColon) - 1;
+}
+
 // Functions are treated differently because they may also include the type of the return value.
 // Tasks are treated in the same way, although not having a return value.
 //
@@ -1171,27 +1224,44 @@ static int skipParameterAssignment (int c)
 static int processFunction (tokenInfo *const token, int c)
 {
 	verilogKind kind = token->kind;	// K_FUNCTION or K_TASK
+	ptrArray *tokenNameSaved = ptrArrayNew ((ptrArrayDeleteFunc)vStringDelete);
+	intArray *doubleColonPos = intArrayNew ();
+	int firstClassNameIndex;	// class_scope of function name
 
 	/* Search for function name
 	 * Last identifier found before a '(' or a ';' is the function name */
 	while (c != '(' && c != ';' && c != EOF)
 	{
 		if (isWordToken (c))
+		{
 			c = readWordToken (token, c);
+			ptrArrayAdd (tokenNameSaved, vStringNewCopy (token->name));
+		}
 		else
 			c = skipWhite (vGetc ());
 		/* skip parameter assignment of a class type
 		 *	ex. function uvm_port_base #(IF) get_if(int index=0); */
 		c = skipParameterAssignment (c);
 
-		/* Identify class type prefixes and create respective context*/
-		if (isInputLanguage (Lang_systemverilog) && isDoubleColon(c))
+		/* Record the position where the class resolution `::` appears */
+		if (isInputLanguage (Lang_systemverilog) && isDoubleColon (c))
+			intArrayAdd (doubleColonPos, ptrArrayCount (tokenNameSaved));
+	}
+
+	/* If the function's class_scope is found, then create respective context */
+	firstClassNameIndex = getFirstClassNameIndex (tokenNameSaved, doubleColonPos);
+	if (firstClassNameIndex >= 0)
+		for (int i = firstClassNameIndex; i < ptrArrayCount (tokenNameSaved) - 1; i++)
 		{
-			verbose ("Found function declaration with class type %s\n", vStringValue (token->name));
-			createContext (K_CLASS, token->name);
+			vString *className = ptrArrayItem (tokenNameSaved, i);
+			verbose ("Found function declaration with class type %s\n", vStringValue (className));
+			createContext (K_CLASS, className);
 			currentContext->classScope = true;
 		}
-	}
+
+	ptrArrayDelete (tokenNameSaved);
+	intArrayDelete (doubleColonPos);
+
 	verbose ("Found function: %s\n", vStringValue (token->name));
 	createTag (token, kind);
 
@@ -1355,18 +1425,24 @@ static int processParameterList (tokenInfo *token, int c)
 	return c;
 }
 
-// [ virtual ] class [ static | automatic ] class_identifier [ parameter_port_list ]
+// LRM IEEE Std 1800-2017 and previous versions
+//  [ virtual ] class [ static | automatic ] class_identifier [ parameter_port_list ]
+// LRM IEEE Std 1800-2023 ( Fixed )
+//  [ virtual ] class [ : final ] class_identifier [ parameter_port_list ]
 //	   [ extends class_type [ ( list_of_arguments ) ] ] [ implements < interface_class_type > ] ;
 // interface class class_identifier [ parameter_port_list ] [ extends < interface_class_type > ] ;
 static int processClass (tokenInfo *const token, int c, verilogKind kind)
 {
 	tokenInfo *classToken;
 
+	if (kind == K_CLASS && c == ':')
+		c = skipWhite (vGetc ());
+
 	/* Get identifiers */
 	while (isWordToken (c))
 	{
 		c = readWordToken (token, c);
-		// skip static or automatic
+		// skip static or automatic or final
 		if (token->kind != K_IGNORE)
 			break;
 	}
@@ -1614,6 +1690,7 @@ static int pushEnumNames (tokenInfo* token, int c)
 		c = skipWhite (vGetc ());
 		while (c != '}' && c != EOF)
 		{
+			c = skipMacro (c, token);
 			if (!isWordToken (c))
 			{
 				VERBOSE ("Unexpected input: %c\n", c);
@@ -1633,6 +1710,7 @@ static int pushEnumNames (tokenInfo* token, int c)
 			if (c == '=')
 				c = skipExpression (vGetc ());
 
+			c = skipMacro (c, token);
 			/* Skip comma */
 			if (c == ',')
 				c = skipWhite (vGetc ());
@@ -1652,6 +1730,9 @@ static int pushMembers (tokenInfo* token, int c)
 		{
 			verilogKind kind = K_UNDEFINED;	// set kind of context for processType()
 			bool not_used;
+			c = skipMacro (c, token);
+			if (c == '}')
+				break;	// end of struct/union
 			if (!isWordToken (c))
 			{
 				VERBOSE ("Unexpected input: %c\n", c);
@@ -2114,7 +2195,7 @@ static void findVerilogTags (void)
 
 extern parserDefinition* VerilogParser (void)
 {
-	static const char *const extensions [] = { "v", NULL };
+	static const char *const extensions [] = { "v", "vh", NULL };
 	parserDefinition* def = parserNew ("Verilog");
 	static selectLanguage selectors[] = { selectVOrVerilogByKeywords, NULL };
 	def->versionCurrent = 1;
@@ -2127,6 +2208,9 @@ extern parserDefinition* VerilogParser (void)
 	def->parser     = findVerilogTags;
 	def->initialize = initializeVerilog;
 	def->selectLanguage  = selectors;
+
+	/* See the comment in SystemVerilogParser. */
+	def->allowNullTag = true;
 	return def;
 }
 
@@ -2143,5 +2227,23 @@ extern parserDefinition* SystemVerilogParser (void)
 	def->extensions = extensions;
 	def->parser     = findVerilogTags;
 	def->initialize = initializeSystemVerilog;
+
+	/*
+	 * A.9.3 Identifiers in LRM
+	 * ------------------------
+	 * escaped_identifier ::= \ {any_printable_ASCII_character_except_white_space} white_space
+	 * ...
+	 * identifier ::=
+	 * simple_identifier
+	 * | escaped_identifier
+	 * ...
+	 * simple_identifier ::= [ a-zA-Z_ ] { [ a-zA-Z0-9_$ ] }
+	 * ------------------------
+	 * All kinds are classified as identifiers, including text macros.
+	 * Let the parser allow to emit null tags for any kind of language
+	 * objects the parser extracts. See als #4257.
+	 */
+	def->allowNullTag = true;
+
 	return def;
 }

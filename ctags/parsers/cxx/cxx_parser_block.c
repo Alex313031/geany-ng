@@ -19,7 +19,7 @@
 
 #include "parse.h"
 #include "vstring.h"
-#include "../cpreprocessor.h"
+#include "../x-cpreprocessor.h"
 #include "debug.h"
 #include "keyword.h"
 #include "read.h"
@@ -42,6 +42,7 @@ bool cxxParserParseBlockHandleOpeningBracket(void)
 	enum CXXScopeType eScopeType = cxxScopeGetType();
 	bool bIsCPP = cxxParserCurrentLanguageIsCPP();
 	CXXToken * pAux;
+	bool bAssignment = false;
 
 	if(
 			(
@@ -55,6 +56,7 @@ bool cxxParserParseBlockHandleOpeningBracket(void)
 					(eScopeType == CXXScopeTypeUnion)    ||
 					(eScopeType == CXXScopeTypeNamespace)
 				)
+				&& (bAssignment = true)
 			) || (
 				bIsCPP &&
 				(g_cxx.pToken->pPrev) &&
@@ -111,12 +113,19 @@ bool cxxParserParseBlockHandleOpeningBracket(void)
 			)
 		)
 	{
+		bool bReduce = true;
+		// Give subparsers a chance to inspect inside {} of of `something[] = {}`
+		// if they want.
+		if (bAssignment && g_cxx.pToken->pPrev->pPrev)
+			bReduce = !cxxSubparserWantVariableBody (g_cxx.pToken->pPrev->pPrev);
+
 		// array or list-like initialisation
+
 		bool bRet = cxxParserParseAndCondenseCurrentSubchain(
 				CXXTokenTypeOpeningBracket | CXXTokenTypeOpeningParenthesis |
 					CXXTokenTypeOpeningSquareParenthesis,
 				false,
-				true
+				bReduce
 			);
 
 		CXX_DEBUG_LEAVE_TEXT("Handled array or list-like initialisation or return");
@@ -181,7 +190,7 @@ bool cxxParserParseBlockHandleOpeningBracket(void)
 		return true;
 	}
 
-	unsigned long uEndPosition = getInputLineNumber();
+	unsigned long uEndPosition = cppGetInputLineNumber();
 
 	// If the function contained a "try" keyword before the opening bracket
 	// then it's likely to be a function-try-block and should be followed by a catch
@@ -238,7 +247,7 @@ bool cxxParserParseBlockHandleOpeningBracket(void)
 			if(!cxxParserParseBlock(true))
 				return false;
 
- 			uEndPosition = getInputLineNumber();
+			uEndPosition = cppGetInputLineNumber();
  		}
  	}
 
@@ -871,6 +880,13 @@ process_token:
 //
 static bool cxxParserParseBlockFull(bool bExpectClosingBracket, bool bExported)
 {
+	g_cxx.iNestingLevels++;
+	if(g_cxx.iNestingLevels > CXX_PARSER_MAXIMUM_NESTING_LEVELS)
+	{
+		CXX_DEBUG_LEAVE_TEXT("Nesting level grown too much: something nasty is going on");
+		return false;
+	}
+
 	cxxSubparserNotifyEnterBlock ();
 
 	cppPushExternalParserBlock();
@@ -878,6 +894,7 @@ static bool cxxParserParseBlockFull(bool bExpectClosingBracket, bool bExported)
 	cppPopExternalParserBlock();
 
 	cxxSubparserNotifyLeaveBlock ();
+	g_cxx.iNestingLevels--;
 
 	return bRet;
 }

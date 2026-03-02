@@ -1,11 +1,13 @@
-get_cursor_refÃ16Œtest_ref_cursor÷0
-function:   test_ref_cursor :: get_cursor_ref
+get_cursor_refÃ16Õ(typ NUMBER)Œtest_ref_cursor÷0œtypes.cursortyp
+function:   types.cursortyp test_ref_cursor :: get_cursor_ref(typ NUMBER)
+get_cursor_refÃ1024Œtest_ref_cursor÷0
+prototype:  test_ref_cursor :: get_cursor_ref
 mainÃ256Œtest_ref_cursor÷0
 namespace:  test_ref_cursor :: main
 mainÃ1024Œtest_ref_cursor÷0
 prototype:  test_ref_cursor :: main
-process_cursorÃ256Œtest_ref_cursor÷0
-namespace:  test_ref_cursor :: process_cursor
+process_cursorÃ256Õ(cur types.cursortyp)Œtest_ref_cursor÷0
+namespace:  test_ref_cursor :: process_cursor(cur types.cursortyp)
 process_cursorÃ1024Œtest_ref_cursor÷0
 prototype:  test_ref_cursor :: process_cursor
 test_ref_cursorÃ512÷0

@@ -21,6 +21,7 @@
 #include "mio.h"
 
 static const char *TR_UNKNOWN = NULL;
+static const char *TR_BREAK   = "/BREAK/";
 static const char *TR_PERL5	  = "Perl";
 static const char *TR_PERL6	  = "Perl6";
 
@@ -42,6 +43,11 @@ static const char *TR_FORTRAN  = "Fortran";
 static const char *TR_V = "V";
 static const char *TR_VERILOG = "Verilog";
 
+static const char *TR_PROLOG = "Prolog";
+
+static const char *TR_SYSTEMD_UNIT = "SystemdUnit";
+static const char *TR_DBUS_SERVICE = "DBusService";
+
 #define startsWith(line,prefix)									\
 	(strncmp(line, prefix, strlen(prefix)) == 0? true: false)
 
@@ -53,6 +59,8 @@ static const char *selectByLines (MIO *input,
 	char line[0x800];
 	while (mio_gets(input, line, sizeof(line))) {
 		const char *lang = lineTaster (line, userData);
+		if (lang == TR_BREAK)
+			return defaultLang;
 		if (lang)
 			return lang;
 	}
@@ -419,6 +427,82 @@ selectVOrVerilogByKeywords (MIO *input,
 		return TR_UNKNOWN;
 }
 
+struct PerlOrPrologScore {
+	int perl;
+	int prolog;
+	unsigned int linum;
+};
+
+static const char *
+tastePerlOrPrologLines (const char *line, void *data)
+{
+	struct PerlOrPrologScore *score = (struct PerlOrPrologScore *)data;
+
+	score->linum++;
+
+	if (score->linum > 16)
+		return TR_BREAK;
+
+	if (line[0] == '#' && line[1] != '!')
+	{
+		/* This is not a shebang: the comment line of perl */
+		score->perl++;
+	}
+	else if (line[0] == '%')
+	{
+		score->prolog++;
+	}
+	else if (startsWith (line, "use "))
+	{
+		score->perl++;
+	}
+	else if (startsWith (line, ":-"))
+		score->prolog += 2;
+	else if (strstr (line, ":-"))
+		score->prolog++;
+	else if (strstr (line, "/*"))
+		score->prolog++;
+
+	return TR_UNKNOWN;
+}
+
+const char *
+selectPerlOrPrologByDistinctiveToken (struct _MIO *input, langType *candidates, unsigned int nCandidates)
+{
+	struct PerlOrPrologScore score = {
+		.perl = 0,
+		.prolog = 0,
+		.linum = 0,
+	};
+	selectByLines (input, tastePerlOrPrologLines, TR_UNKNOWN, &score);
+
+	int d = score.perl - score.prolog;
+	if (d > 0)
+		return TR_PERL5;
+	else if (d < 0)
+		return TR_PROLOG;
+	else
+		return TR_UNKNOWN;
+}
+
+static const char *
+tasteDBusServiceOrSystemdUnit (const char *line, void *data CTAGS_ATTR_UNUSED)
+{
+	if (startsWith (line, "[D-BUS Service]"))
+		return TR_DBUS_SERVICE;
+	if (startsWith (line, "[Unit]"))
+		return TR_SYSTEMD_UNIT;
+	return TR_UNKNOWN;
+}
+
+const char *
+selectByDBusServiceAndSystemdUnitSectionNames (MIO *input,
+							langType *candidates CTAGS_ATTR_UNUSED,
+							unsigned int nCandidates CTAGS_ATTR_UNUSED)
+{
+	return selectByLines (input, tasteDBusServiceOrSystemdUnit, TR_SYSTEMD_UNIT, NULL);
+}
+
 #ifdef HAVE_LIBXML
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
@@ -438,8 +522,13 @@ xmlParseMIO (MIO *input)
 	Assert (buf);
 
 	xmlSetGenericErrorFunc (NULL, suppressWarning);
+#ifdef IS_xmlLineNumbersDefault_DEPRECATED
+	return xmlReadMemory((const char *)buf, len, NULL, NULL, 0);
+#else
 	xmlLineNumbersDefault (1);
 	return xmlParseMemory((const char *)buf, len);
+#endif
+
 }
 
 static bool

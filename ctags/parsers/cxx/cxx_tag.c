@@ -14,7 +14,7 @@
 #include "cxx_parser_internal.h"
 
 #include "entry.h"
-#include "../cpreprocessor.h"
+#include "../x-cpreprocessor.h"
 #include "routines.h"
 #include "trashbox.h"
 #include "xtag.h"
@@ -39,36 +39,43 @@ CXX_COMMON_HEADER_ROLES(C);
 static roleDefinition CXXHeaderRoles [] = {
 		RoleTemplateSystem,
 		RoleTemplateLocal,
-		{ true, "imported", "imported with \"imported ...\"" },
-		{ true, "exported", "exported with \"exported imported ...\"" },
+		{ true, "imported", "imported with \"imported ...\"",
+		  .version = 2 },
+		{ true, "exported", "exported with \"exported imported ...\"",
+		  .version = 2 },
 };
 CXX_COMMON_HEADER_ROLES(CUDA);
 
 /* Currently V parser wants these items. */
-#define RoleTemplateForeignDecl { true, "foreigndecl", "declared in foreign languages" }
+#define RoleTemplateForeignDecl(V) { true, "foreigndecl", "declared in foreign languages", .version = V }
+#define RoleTemplateForeignCall(V) { true, "foreigncall", "called in foreign languages", .version = V }
 
 #define CXX_COMMON_FUNCTION_ROLES(__langPrefix) \
 	static roleDefinition __langPrefix##FunctionRoles [] = { \
-		RoleTemplateForeignDecl, \
+		RoleTemplateForeignDecl(1),							 \
+		RoleTemplateForeignCall(2),							 \
 	}
 
 CXX_COMMON_FUNCTION_ROLES(C);
 
 #define CXX_COMMON_STRUCT_ROLES(__langPrefix) \
 	static roleDefinition __langPrefix##StructRoles [] = { \
-		RoleTemplateForeignDecl, \
+		RoleTemplateForeignDecl(1), \
 	}
 
 CXX_COMMON_STRUCT_ROLES(C);
 
 static roleDefinition CXXModuleRoles [] = {
 
-	{ true, "partOwner", "used for specifying a partition" },
-	{ true, "imported", "imported with \"imported ...\"" },
+	{ true, "partOwner", "used for specifying a partition",
+	  .version = 2 },
+	{ true, "imported", "imported with \"imported ...\"",
+	  .version = 2 },
 };
 
 static roleDefinition CXXPartitionRoles [] = {
-	{ true, "imported", "imported with \"imported ...\"" },
+	{ true, "imported", "imported with \"imported ...\"",
+	  .version = 2 },
 };
 
 #define CXX_COMMON_KINDS(_langPrefix, _szMemberDescription, _syncWith, FUNC_ROLES, STRUCT_ROLES) \
@@ -111,9 +118,11 @@ static kindDefinition g_aCXXCPPKinds [] = {
 	{ false, 'U', "using",      "using namespace statements" },
 	{ false, 'Z', "tparam",     "template parameters" },
 	{ true,  'M', "module",     "modules",
-			.referenceOnly = false, ATTACH_ROLES(CXXModuleRoles) },
+			.referenceOnly = false, ATTACH_ROLES(CXXModuleRoles),
+			.version = 2 },
 	{ true,  'P', "partition",  "partitions",
-			.referenceOnly = false, ATTACH_ROLES(CXXPartitionRoles) },
+			.referenceOnly = false, ATTACH_ROLES(CXXPartitionRoles),
+			.version = 2 },
 };
 
 static kindDefinition g_aCXXCUDAKinds [] = {
@@ -139,11 +148,13 @@ static const char * g_aCXXAccessStrings [] = {
 	}, { \
 		.name = "section", \
 		.description = "the place where the object is placed", \
-		.enabled = false \
+		.enabled = false, \
+		.version = 1 \
 	}, { \
 		.name = "alias", \
 		.description = "the name of the alias target specified in __attribute__((alias(...)))", \
-		.enabled = false \
+		.enabled = false, \
+		.version = 1 \
 	}
 
 static fieldDefinition g_aCXXCFields [] = {
@@ -792,7 +803,7 @@ int cxxTagCommit(int *piCorkQueueIndexFQ)
 		// If the scope kind is enumeration then we need to remove the
 		// last scope part. This is what old ctags did.
 		if(cxxScopeGetSize() < 2)
-			return -1; // toplevel enum
+			return CORK_NIL; // toplevel enum
 
 		x = cxxScopeGetFullNameExceptLastComponentAsString();
 		CXX_DEBUG_ASSERT(x,"Scope with size >= 2 should have returned a value here");

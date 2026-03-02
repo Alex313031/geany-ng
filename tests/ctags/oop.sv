@@ -26,7 +26,7 @@
 
 package oop;
 
-`define MACRO 1234 // NB: Shouldn't the ctag for this be outside of the package? (ctags bug?)
+`define MACRO 1234
 
 /* Constants */
 

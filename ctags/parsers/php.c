@@ -381,7 +381,7 @@ static void initPhpEntry (tagEntryInfo *const e, const tokenInfo *const token,
 		markTagExtraBit (e, XTAG_ANONYMOUS);
 }
 
-static void  makePhpTagEntry  (tagEntryInfo *const e)
+static void makePhpTagEntry (tagEntryInfo *const e)
 {
 	makeTagEntry (e);
 	makeQualifiedTagEntry (e);
@@ -868,7 +868,7 @@ static int findPhpStart (int *tagStartColumn)
 	{
 		if ((c = getcFromInputFile ()) == '<')
 		{
-			*tagStartColumn = getInputLineOffset () - 1;
+			*tagStartColumn = getInputColumnNumber () - 1;
 			c = getcFromInputFile ();
 			/* <?, <?= and <?php, but not <?xml */
 			if (c == '?')
@@ -876,7 +876,10 @@ static int findPhpStart (int *tagStartColumn)
 				c = getcFromInputFile ();
 				/* echo tag */
 				if (c == '=')
+				{
 					c = getcFromInputFile ();
+					break;
+				}
 				/* don't enter PHP mode on "<?xml", yet still support short open tags (<?) */
 				else if (tolower (c)                          != 'x' ||
 				         tolower ((c = getcFromInputFile ())) != 'm' ||
@@ -933,19 +936,20 @@ getNextChar:
 	{
 		unsigned long startSourceLineNumber = getSourceLineNumber ();
 		unsigned long startLineNumber = getInputLineNumber ();
-		int startLineOffset = getInputLineOffset ();
-		int endLineOffset = -1;
 
-		c = findPhpStart (&endLineOffset);
+		int startColumnNumber = getInputColumnNumber ();
+		int endColumnNumber;
+
+		c = findPhpStart (&endColumnNumber);
 		if (c != EOF)
 			InPhp = true;
-		else if (endLineOffset < 0)
-			endLineOffset = getInputLineOffset ();
+		else
+			endColumnNumber = getInputColumnNumber ();
 
 		unsigned long endLineNumber = getInputLineNumber ();
 
-		makePromise ("HTML", startLineNumber, startLineOffset,
-					 endLineNumber, endLineOffset, startSourceLineNumber);
+		makePromise ("HTML", startLineNumber, startColumnNumber,
+					 endLineNumber, endColumnNumber, startSourceLineNumber);
 	}
 	else
 		c = getcFromInputFile ();
@@ -1739,6 +1743,36 @@ static bool parseNamespace (tokenInfo *const token)
 	return true;
 }
 
+/* skip trait uses not to confuse typerefs
+ * 	use Name;
+ * 	use \\Some\\Name;
+ * 	use Name, Other;
+ * 	use Name { method as private; }
+ * 	use Name, Other { otherMethod as public otherName; }
+ *
+ * Note that curly braces are only allowed on the last `use`, this is a syntax
+ * error:
+ * 	use Name { method as private; }, Other;
+ * This has to be split in two `use`es or reordered.
+ */
+static bool parseClassUse (tokenInfo *const token)
+{
+	do
+	{
+		readToken (token);
+		if (token->type == TOKEN_OPEN_CURLY)
+		{
+			enterScope (token, NULL, -1);
+			return true;
+		}
+	}
+	while (token->type == TOKEN_IDENTIFIER ||
+		   token->type == TOKEN_BACKSLASH ||
+		   token->type == TOKEN_COMMA);
+
+	return (token->type == TOKEN_SEMICOLON);
+}
+
 static void enterScope (tokenInfo *const parentToken,
 						const vString *const extraScope,
 						const int parentKind)
@@ -1801,6 +1835,8 @@ static void enterScope (tokenInfo *const parentToken,
 						 * is also used to i.e. "import" traits into a class */
 						if (vStringLength (token->scope) == 0)
 							readNext = parseUse (token);
+						else if (parentKind == K_CLASS || parentKind == K_TRAIT)
+							readNext = parseClassUse (token);
 						break;
 
 					case KEYWORD_namespace:	readNext = parseNamespace (token);	break;

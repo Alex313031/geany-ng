@@ -147,7 +147,7 @@ extern int ftruncate (int fd, off_t length);
 #endif
 
 #define INTERVAL_START(node) ((node)->slot.lineNumber)
-#define INTERVAL_END(node)   ((node)->slot.extensionFields._endLine)
+#define INTERVAL_END(node) (getTagEndLine (&(node)->slot))
 
 INTERVAL_TREE_DEFINE(tagEntryInfoX, intervalnode,
 					 unsigned long, __intervalnode_subtree_last,
@@ -422,8 +422,17 @@ extern void openTagFile (void)
 	else
 	{
 		bool fileExists;
+		bool directoryExists;
 
 		TagFile.name = eStrdup (Option.tagFileName);
+
+		directoryExists = doesDirectoryExist (TagFile.name);
+		if (directoryExists)
+			error (FATAL,
+				   "\"%s\" already exists as a directory; I cannot write tag entries there.\n"
+				   "Remove the directory or specify a file name with -o <tagfile> option.",
+				   TagFile.name);
+
 		fileExists = doesFileExist (TagFile.name);
 		if (fileExists  &&  ! isTagFile (TagFile.name))
 			error (FATAL,
@@ -607,7 +616,7 @@ static void resizeTagFile (const long newSize)
 # endif
 #endif
 	if (result == -1)
-		fprintf (stderr, "Cannot shorten tag file: errno = %d\n", errno);
+		error (WARNING, "Cannot shorten tag file: errno = %d\n", errno);
 }
 
 static void writeEtagsIncludes (MIO *const mio)
@@ -932,7 +941,7 @@ static int   makePatternStringCommon (const tagEntryInfo *const tag,
 	}
 
 	length += putc_func(searchChar, output);
-	if ((tag->boundaryInfo & INPUT_BOUNDARY_START) == 0)
+	if ((tag->boundaryInfo & AREA_BOUNDARY_START) == 0)
 		length += putc_func('^', output);
 	length += appendInputLine (putc_func, line, Option.patternLengthLimit,
 							   output, &omitted);
@@ -1106,7 +1115,7 @@ static tagEntryInfoX *copyTagEntry (const tagEntryInfo *const tag,
 	x->corkIndex = CORK_NIL;
 	memset(&x->intervalnode, 0, sizeof (x->intervalnode));
 	x->__intervalnode_subtree_last = 0;
-	tagEntryInfo  *slot = (tagEntryInfo *)x;
+	tagEntryInfo *slot = (tagEntryInfo *)x;
 
 	*slot = *tag;
 
@@ -1611,7 +1620,7 @@ static int queueTagEntry (const tagEntryInfo *const tag)
 	 * removeFromIntervalTabMaybe() explicitly.
 	 */
 	if (! isTagExtraBitMarked (&entry->slot, XTAG_FILE_NAMES)
-		&& entry->slot.extensionFields._endLine > entry->slot.lineNumber
+		&& getTagEndLine (&entry->slot) > entry->slot.lineNumber
 		&& !isTagExtraBitMarked (tag, XTAG_QUALIFIED_TAGS))
 	{
 		intervaltab_insert(entry, &TagFile.intervaltab);
@@ -1632,9 +1641,9 @@ extern void updateTagLine (tagEntryInfo *tag, unsigned long lineNumber,
 
 	tag->lineNumber = lineNumber;
 	tag->filePosition = filePosition;
-	tag->boundaryInfo = getNestedInputBoundaryInfo (lineNumber);
+	tag->boundaryInfo = getAreaBoundaryInfo (lineNumber);
 
-	if (entry && tag->lineNumber < tag->extensionFields._endLine)
+	if (entry && tag->lineNumber < getTagEndLine (tag))
 	{
 		intervaltab_insert(entry, &TagFile.intervaltab);
 		tag->inIntevalTab = 1;
@@ -1651,6 +1660,20 @@ extern void setTagEndLine(tagEntryInfo *tag, unsigned long endLine)
 			   tag->name,
 			   tag->inputFileName,
 			   tag->lineNumber);
+#if 0
+		Assert ((endLine == 0 || endLine >= tag->lineNumber));
+		/*
+		 * If we enable this assertion, (option based) user parsers can
+		 * crash. No user wants this behavior even if the one pass
+		 * --enable-debuggng to configre when building; jut warning
+		 * is enough.
+		 *
+		 * Till implementing the way to detect whether a builtin parser
+		 * calls this setTagEndLine() or a user parser callit, we canot
+		 * enable this assertion. The assertion should be enabled for
+		 * builtin parsers.
+		 */
+#endif
 		return;
 	}
 
@@ -1753,7 +1776,7 @@ static void buildFqTagCache (tagEntryInfo *const tag)
 	getTagScopeInformation (tag, NULL, NULL);
 }
 
-static void writeTagEntry (const tagEntryInfo *const tag)
+static void writeTagEntry (tagEntryInfo *const tag)
 {
 	int length = 0;
 
@@ -1761,11 +1784,20 @@ static void writeTagEntry (const tagEntryInfo *const tag)
 
 	DebugStatement ( debugEntry (tag); )
 
+	if (isTagExtraBitMarked(tag, XTAG_NULLTAG))
+	{
+		if (!writerCanPrintNullTag())
+			return;
+
+		if (!isXtagEnabled(XTAG_NULLTAG))
+			return;
+	}
+
 #ifdef _WIN32
 	if (getFilenameSeparator(Option.useSlashAsFilenameSeparator) == FILENAME_SEP_USE_SLASH)
 	{
-		Assert (((const tagEntryInfo *)tag)->inputFileName);
-		char *c = (char *)(((tagEntryInfo *const)tag)->inputFileName);
+		Assert (tag->inputFileName);
+		char *c = (char *)(tag->inputFileName);
 		while (*c)
 		{
 			if (*c == PATH_SEPARATOR)
@@ -1782,7 +1814,7 @@ static void writeTagEntry (const tagEntryInfo *const tag)
 		&& !tag->skipAutoFQEmission)
 	{
 		/* const is discarded to update the cache field of TAG. */
-		buildFqTagCache ( (tagEntryInfo *const)tag);
+		buildFqTagCache (tag);
 	}
 
 	length = writerWriteTag (TagFile.mio, tag);
@@ -1917,7 +1949,7 @@ extern int makePlaceholder (const char *const name)
 	return makeTagEntry (&e);
 }
 
-extern int makeTagEntry (const tagEntryInfo *const tag)
+extern int makeTagEntry (tagEntryInfo *const tag)
 {
 	int r = CORK_NIL;
 	Assert (tag->name != NULL);
@@ -1929,11 +1961,18 @@ extern int makeTagEntry (const tagEntryInfo *const tag)
 
 	if (tag->name [0] == '\0' && (!tag->placeholder))
 	{
-		if (!doesInputLanguageAllowNullTag())
+		if (! tag->allowNullTag)
+		{
 			error (NOTICE, "ignoring null tag in %s(line: %lu, language: %s)",
 				   getInputFileName (), tag->lineNumber,
 				   getLanguageName (tag->langType));
-		goto out;
+			goto out;
+		}
+
+		/* writeTagEntry decides whether ctags emits this tag or not.
+		 * At this point, we just mark the tag as a null tag. */
+		if (! tag->placeholder)
+			markTagExtraBit(tag, XTAG_NULLTAG);
 	}
 
 	if (TagFile.cork)
@@ -2037,7 +2076,7 @@ static void initTagEntryFull (tagEntryInfo *const e, const char *const name,
 	memset (e, 0, sizeof (tagEntryInfo));
 	e->lineNumberEntry = (bool) (Option.locate == EX_LINENUM);
 	e->lineNumber      = lineNumber;
-	e->boundaryInfo    = getNestedInputBoundaryInfo (lineNumber);
+	e->boundaryInfo    = getAreaBoundaryInfo (lineNumber);
 	e->langType        = langType_;
 	e->filePosition    = filePosition;
 	e->inputFileName   = inputFileName;
@@ -2057,7 +2096,7 @@ static void initTagEntryFull (tagEntryInfo *const e, const char *const name,
 
 	e->extensionFields.nth = NO_NTH_FIELD;
 
-	if (doesParserRunAsGuest ())
+	if (isAreaStacked ())
 		markTagExtraBit (e, XTAG_GUEST);
 	if (doesSubparserRun ())
 		markTagExtraBit (e, XTAG_SUBPARSER);
@@ -2073,6 +2112,8 @@ static void initTagEntryFull (tagEntryInfo *const e, const char *const name,
 
 	if (isParserMarkedNoEmission ())
 		e->placeholder = 1;
+
+	e->allowNullTag = doesLanguageAllowNullTag (e->langType);
 }
 
 extern void initTagEntry (tagEntryInfo *const e, const char *const name,
@@ -2325,8 +2366,13 @@ extern void setTagFilePosition (MIOPos *p, bool truncation)
 
 
 	long t0 = 0;
-	if (truncation)
+	if (truncation) {
 		t0 = mio_tell (TagFile.mio);
+		if (t0 == -1)
+			error (FATAL|PERROR,
+				   "failed to tell the file position of the tag file (t0)\n");
+	}
+
 
 	if (mio_setpos (TagFile.mio, p) == -1)
 		error (FATAL|PERROR,
@@ -2335,6 +2381,10 @@ extern void setTagFilePosition (MIOPos *p, bool truncation)
 	if (truncation)
 	{
 		long t1 = mio_tell (TagFile.mio);
+		if (t1 == -1)
+			error (FATAL|PERROR,
+				   "failed to tell the file position of the tag file (t1)\n");
+
 		if (!mio_try_resize (TagFile.mio, (size_t)t1))
 			error (FATAL|PERROR,
 				   "failed to truncate the tag file %ld -> %ld\n", t0, t1);
@@ -2382,9 +2432,9 @@ extern int queryIntervalTabByCorkEntry(int corkIndex)
 	tagEntryInfoX *ex = ptrArrayItem (TagFile.corkQueue, corkIndex);
 	tagEntryInfo *e = &ex->slot;
 
-	if (e->extensionFields._endLine == 0)
+	if (getTagEndLine (e) == 0)
 		return queryIntervalTabByLine(e->lineNumber);
-	return queryIntervalTabByRange(e->lineNumber, e->extensionFields._endLine);
+	return queryIntervalTabByRange(e->lineNumber, getTagEndLine (e));
 }
 
 extern bool removeFromIntervalTabMaybe(int corkIndex)

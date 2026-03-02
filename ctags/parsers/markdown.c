@@ -34,7 +34,7 @@
 #include "promise.h"
 #include "htable.h"
 
-#include "markdown.h"
+#include "x-markdown.h"
 
 /*
  *   DATA DEFINITIONS
@@ -59,7 +59,8 @@ static kindDefinition MarkdownKinds[] = {
 	{ true, 'T', "l4subsection",  "level 4 sections" },
 	{ true, 'u', "l5subsection",  "level 5 sections" },
 	{ true, 'n', "footnote",      "footnotes" },
-	{ true, 'h', "hashtag",       "hashtags"},
+	{ true, 'h', "hashtag",       "hashtags",
+	  .version = 1 },
 };
 
 static fieldDefinition MarkdownFields [] = {

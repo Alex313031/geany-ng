@@ -1,10 +1,10 @@
 do_this_stuffÌ256Îp_testÖ0
 namespace:  p_test :: do_this_stuff
-myfn1Ì256Îp_testÖ0
-namespace:  p_test :: myfn1
-myfn2Ì256Îp_testÖ0
-namespace:  p_test :: myfn2
+myfn1Ì256Í(p_str1 in varchar2, p_str2 in varchar2)Îp_testÖ0
+namespace:  p_test :: myfn1(p_str1 in varchar2, p_str2 in varchar2)
+myfn2Ì256Í(p_str1 in varchar2, p_str2 in varchar2)Îp_testÖ0
+namespace:  p_test :: myfn2(p_str1 in varchar2, p_str2 in varchar2)
 p_testÌ512Ö0
 package:    p_test
-process_thisÌ256Îp_testÖ0
-namespace:  p_test :: process_this
+process_thisÌ256Í(p_flag in boolean)Îp_testÖ0
+namespace:  p_test :: process_this(p_flag in boolean)

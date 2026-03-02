@@ -55,6 +55,7 @@ static int writeJsonPtagEntry (tagWriter *writer CTAGS_ATTR_UNUSED,
 				void *clientData);
 
 tagWriter jsonWriter = {
+	.oformat = "json",
 	.writeEntry = writeJsonEntry,
 	.writePtagEntry = writeJsonPtagEntry,
 	.printPtagByDefault = true,
@@ -62,6 +63,7 @@ tagWriter jsonWriter = {
 	.postWriteEntry = NULL,
 	.rescanFailedEntry = NULL,
 	.treatFieldAsFixed = NULL,
+	.canPrintNullTag = true,
 	.defaultFileName = NULL,
 };
 
@@ -160,9 +162,13 @@ static void addParserFields (json_t *response, const tagEntryInfo *const tag)
 		}
 		else if (dt & FIELDTYPE_INTEGER)
 		{
-			/* NOT IMPLEMENTED YET */
-			AssertNotReached ();
-			o = json_null ();
+			const char *str = escapeFieldValueRaw (tag, ftype, i);
+			long tmp;
+
+			if (strToLong (str, 10, &tmp))
+				o = json_integer (tmp);
+			else
+				o = json_integer(str[0] == '\0'? 0: 1);
 		}
 		else if (dt & FIELDTYPE_BOOL)
 			o = json_true ();
@@ -308,11 +314,13 @@ extern bool ptagMakeJsonOutputVersion (ptagDesc *desc, langType language CTAGS_A
 #else /* HAVE_JANSSON */
 
 tagWriter jsonWriter = {
+	.oformat = "json",
 	.writeEntry = NULL,
 	.writePtagEntry = NULL,
 	.preWriteEntry = NULL,
 	.postWriteEntry = NULL,
 	.defaultFileName = "-",
+	.canPrintNullTag = false,
 };
 
 extern bool ptagMakeJsonOutputVersion (ptagDesc *desc, langType language CTAGS_ATTR_UNUSED,

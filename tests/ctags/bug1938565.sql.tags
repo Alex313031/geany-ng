@@ -1,10 +1,10 @@
 demo_pkgÃ512÷0
 package:    demo_pkg
-func1Ã16Œdemo_pkg÷0
-function:   demo_pkg :: func1
+func1Ã16Õ(value in varchar)Œdemo_pkg÷0œnumber
+function:   number demo_pkg :: func1(value in varchar)
 func1_protoÃ1024Œdemo_pkg÷0
 prototype:  demo_pkg :: func1_proto
-func2Ã16Œdemo_pkg÷0
-function:   demo_pkg :: func2
+func2Ã16Õ(value in varchar)Œdemo_pkg÷0œnumber
+function:   number demo_pkg :: func2(value in varchar)
 func2_protoÃ1024Œdemo_pkg÷0
 prototype:  demo_pkg :: func2_proto

@@ -19,7 +19,7 @@
 
 #include "parse.h"
 #include "vstring.h"
-#include "../cpreprocessor.h"
+#include "../x-cpreprocessor.h"
 #include "debug.h"
 #include "keyword.h"
 #include "read.h"
@@ -56,6 +56,13 @@ void cxxParserNewStatementFull(bool bExported)
 	} else {
 		// we don't care about stale specializations as they
 		// are destroyed wen the base template prefix is extracted
+	}
+	// Fixed a memory leak by freeing the specializations here anyway.
+	// For certain invalid inputs, parseTemplateAngleBracketsToTemplateChain is never called.
+	if(g_cxx.pTemplateSpecializationTokenChain)
+	{
+		cxxTokenChainDestroy(g_cxx.pTemplateSpecializationTokenChain);
+		g_cxx.pTemplateSpecializationTokenChain = NULL;
 	}
 	g_cxx.uKeywordState = bExported? CXXParserKeywordStateSeenExport: 0;
 
@@ -429,6 +436,20 @@ void cxxParserSetEndLineForTagInCorkQueue(int iCorkQueueIndex,unsigned long lEnd
 {
 	CXX_DEBUG_ASSERT(iCorkQueueIndex > CORK_NIL,"The cork queue index is not valid");
 
+	tagEntryInfo *pTag = getEntryInCorkQueue (iCorkQueueIndex);
+	if (pTag)
+	{
+		/* When processing the input data in unget-buffer,
+		 * lineNumber > endLine can happen. */
+		if (pTag->lineNumber > lEndLine) {
+			CXX_DEBUG_PRINT ("Reset endline for \"%s\" starting from %ld (%ld => 0)",
+							 pTag->name,
+							 pTag->lineNumber,
+							 lEndLine);
+			lEndLine = 0;
+
+		}
+	}
 	setTagEndLineToCorkEntry (iCorkQueueIndex, lEndLine);
 }
 
@@ -438,7 +459,7 @@ void cxxParserSetEndLineForTagInCorkQueue(int iCorkQueueIndex,unsigned long lEnd
 //
 void cxxParserMarkEndLineForTagInCorkQueue(int iCorkQueueIndex)
 {
-	cxxParserSetEndLineForTagInCorkQueue(iCorkQueueIndex,getInputLineNumber());
+	cxxParserSetEndLineForTagInCorkQueue(iCorkQueueIndex, cppGetInputLineNumber());
 }
 
 
@@ -494,8 +515,8 @@ static bool cxxParserParseEnumStructClassOrUnionFullDeclarationTrailer(
 			szTypeName
 		);
 
-	MIOPos oFilePosition = getInputFilePosition();
-	int iFileLine = getInputLineNumber();
+	MIOPos oFilePosition = cppGetInputFilePosition();
+	int iFileLine = cppGetInputLineNumber();
 	int eMaybeTokenTypeOpeningBracket = (g_cxx.bConfirmedCPPLanguage
 										 ? 0
 										 : CXXTokenTypeOpeningBracket);
@@ -899,6 +920,7 @@ bool cxxParserParseEnum(void)
 	int iCorkQueueIndex = CORK_NIL;
 	int iCorkQueueIndexFQ = CORK_NIL;
 
+	bool bEnumExported = false;
 	if(tag)
 	{
 		// FIXME: this is debatable
@@ -921,7 +943,13 @@ bool cxxParserParseEnum(void)
 		if(bIsScopedEnum)
 			uProperties |= CXXTagPropertyScopedEnum;
 		if(g_cxx.uKeywordState & CXXParserKeywordStateSeenExport)
+		{
 			uProperties |= CXXTagPropertyExport;
+			bEnumExported = true;
+		}
+		tag->isFileScope = (bEnumExported || cxxScopeIsExported())
+			? 0
+			: tag->isFileScope;
 
 		if(uProperties)
 			pszProperties = cxxTagSetProperties(uProperties);
@@ -936,7 +964,7 @@ bool cxxParserParseEnum(void)
 			cxxTokenDestroy(pTypeName);
 	}
 
-	cxxScopePush(pEnumName,CXXScopeTypeEnum,CXXScopeAccessPublic);
+	cxxScopePushExported(pEnumName,CXXScopeTypeEnum,CXXScopeAccessPublic, bEnumExported);
 	iPushedScopes++;
 
 	vString * pScopeName = cxxScopeGetFullNameAsString();
@@ -968,7 +996,10 @@ bool cxxParserParseEnum(void)
 			tag = cxxTagBegin(CXXTagKindENUMERATOR,pFirst);
 			if(tag)
 			{
-				tag->isFileScope = !isInputHeaderFile();
+				// If the enum is export'ed, we consider that its
+				// enumerators are not limited in a file scope.
+				tag->isFileScope = !isInputHeaderFile() && !cxxScopeIsExported();
+
 				cxxTagCommit(NULL);
 			}
 		}
@@ -1103,7 +1134,10 @@ static bool cxxParserParseClassStructOrUnionInternal(
 		// }
 
 		if(g_cxx.pTemplateSpecializationTokenChain)
+		{
 			cxxTokenChainDestroy(g_cxx.pTemplateSpecializationTokenChain);
+			g_cxx.pTemplateSpecializationTokenChain = NULL;
+		}
 
 		g_cxx.pTemplateSpecializationTokenChain = cxxParserParseTemplateAngleBracketsToSeparateChain(false);
 		if(!g_cxx.pTemplateSpecializationTokenChain)
@@ -1349,6 +1383,7 @@ static bool cxxParserParseClassStructOrUnionInternal(
 	bool bGotTemplate = g_cxx.pTemplateTokenChain &&
 			(g_cxx.pTemplateTokenChain->iCount > 0) &&
 			cxxParserCurrentLanguageIsCPP();
+	bool bExported = uInitialKeywordState & CXXParserKeywordStateSeenExport;
 
 	if(tag)
 	{
@@ -1400,8 +1435,14 @@ static bool cxxParserParseClassStructOrUnionInternal(
 		tag->isFileScope = !isInputHeaderFile();
 
 		unsigned int uProperties = 0;
-		if(uInitialKeywordState & CXXParserKeywordStateSeenExport)
+		if(bExported)
 			uProperties |= CXXTagPropertyExport;
+		// Overwrite the assigned value if the language object is export'ed
+		// directly or indirectly.
+		tag->isFileScope = (bExported || cxxScopeIsExported())
+			? 0
+			: tag->isFileScope;
+
 		vString * pszProperties = NULL;
 
 		if(uProperties)
@@ -1413,11 +1454,12 @@ static bool cxxParserParseClassStructOrUnionInternal(
 		vStringDelete (pszProperties); /* NULL is acceptable. */
 	}
 
-	cxxScopePush(
+	cxxScopePushExported(
 			pClassName,
 			uScopeType,
 			(uTagKind == CXXTagCPPKindCLASS) ?
-				CXXScopeAccessPrivate : CXXScopeAccessPublic
+				CXXScopeAccessPrivate : CXXScopeAccessPublic,
+			bExported
 		);
 
 	if(
@@ -1980,6 +2022,8 @@ static rescanReason cxxParserMain(const unsigned int passCount)
 	g_cxx.iChar = ' ';
 
 	g_cxx.iNestingLevels = 0;
+
+	g_cxx.bInCXX11Attribute = false;
 
 	bool bRet = cxxParserParseBlock(false);
 
