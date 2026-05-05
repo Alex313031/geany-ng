@@ -2662,7 +2662,8 @@ documents before restart.
 ======================================== ============================================ ============ ===========
 Key                                      Description                                  Default      Applies
 ======================================== ============================================ ============ ===========
-**``editor`` group**
+**"editor" group**
+--------------------------------------------------------------------------------------------------------------
 use_gtk_word_boundaries                  Whether to look for the end of a word        true         to new
                                          when using word-boundary related                          documents
                                          Scintilla commands (see `Scintilla
@@ -2683,7 +2684,8 @@ indent_hard_tab_width                    The size of a tab character. Don't chan
 editor_ime_interaction                   Input method editor (IME)'s candidate        0            to new
                                          window behaviour. May be 0 (windowed) or                  documents
                                          1 (inline)
-**``interface`` group**
+**"interface" group**
+--------------------------------------------------------------------------------------------------------------
 show_symbol_list_expanders               Whether to show or hide the small            true         to new
                                          expander icons on the symbol list                         documents
                                          treeview.
@@ -2704,7 +2706,8 @@ msgwin_scribble_visible                  Whether to show the Scribble tab in the
                                          Messages Window
 warn_on_project_close                    Whether to show a warning when opening       true         immediately
                                          a project while one is already open.
-**``terminal`` group**
+**"terminal" group**
+--------------------------------------------------------------------------------------------------------------
 send_selection_unsafe                    By default, Geany strips any trailing        false        immediately
                                          newline characters from the current
                                          selection before sending it to the terminal
@@ -2722,7 +2725,8 @@ send_cmd_prefix                          String with which prefix the commands s
                                          setting this to a space.  Note that leading
                                          spaces must be escaped using `\s` in the
                                          configuration file.
-**``files`` group**
+**"files" group**
+--------------------------------------------------------------------------------------------------------------
 allow_always_save                        Whether files can be saved always, even      false        immediately
                                          if they don't have any changes.
                                          By default, the Save button and menu
@@ -2778,7 +2782,8 @@ save_config_on_file_change               Automatically save Geany's configuratio
 extract_filetype_regex                   Regex to extract filetype name from file     See link     immediately
                                          via capture group one.
                                          See `ft_regex`_ for default.
-**``search`` group**
+**"search" group**
+--------------------------------------------------------------------------------------------------------------
 find_selection_type                      See `Find selection`_.                       0            immediately
 replace_and_find_by_default              Set ``Replace & Find`` button as default so  true         immediately
                                          it will be activated when the Enter key is
@@ -2788,15 +2793,17 @@ skip_confirmation_for_replace_in_session If set, do *not* show the              
                                          confirmation dialog before replacing text
                                          in the whole session, i.e. in all open
                                          files.
-**``build`` group**
+**"build" group**
+--------------------------------------------------------------------------------------------------------------
 number_ft_menu_items                     The maximum number of menu items in the      2            on restart
                                          filetype build section of the Build menu.
 number_non_ft_menu_items                 The maximum number of menu items in the      3            on restart
                                          independent build section.
 number_exec_menu_items                   The maximum number of menu items in the      2            on restart
                                          execute section of the Build menu.
-**``socket`` group**
-socket_remote_cmd_port                   TCP port number to be used for inter         2            on restart
+**"socket" group**
+--------------------------------------------------------------------------------------------------------------
+socket_remote_cmd_port                   TCP port number to be used for inter         45937        on restart
                                          process communication (i.e. with other
                                          Geany instances, e.g. "Open with Geany").
                                          Only available on Windows, valid port
