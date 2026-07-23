@@ -26,7 +26,7 @@
 # include "config.h"
 #endif
 
-/* Need Windows XP for SHGetFolderPathAndSubDirW */
+/* Target Windows 7 APIs -- geany-ng supports Windows 7 and newer */
 #define WINVER 0x0601
 #define _WIN32_WINNT 0x0601
 /* Needed for SHGFP_TYPE */

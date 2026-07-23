@@ -1188,7 +1188,13 @@ gint main_lib(gint argc, gchar **argv)
 #endif
 	ui_create_recent_menus();
 
-	ui_set_statusbar(TRUE, _("This is Geany-ng %s!"), main_get_version_string());
+	{
+		/* keep the upstream msgid so existing translations still apply,
+		 * and append the fork branding untranslated */
+		gchar *welcome = g_strdup_printf(_("This is Geany %s."), main_get_version_string());
+		ui_set_statusbar(TRUE, "%s (Geany-ng)", welcome);
+		g_free(welcome);
+	}
 	if (config_dir_result != 0)
 	{
 		gchar *message = g_strdup_printf(_("Configuration directory could not be created (%s)."),
