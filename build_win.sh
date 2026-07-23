@@ -10,16 +10,15 @@ c0='\033[0m' # Reset Text
 bold='\033[1m' # Bold Text
 underline='\033[4m' # Underline Text
 
-# Error handling
-yell() { echo "$0: $*" >&2; }
-die() { yell "$*"; exit 111; }
-try() { "$@" || die "${RED}Failed $*"; }
+# Location of this script (the geany-ng source tree)
+SOURCE_DIR="$(cd "$(dirname "$0")" && pwd)"
+export GEANY_SOURCE_DIR="${SOURCE_DIR}"
 
 # --help
 displayHelp () {
 	printf "\n" &&
 	printf "${bold}${GRE}Script to build a Geany-ng installer on Windows.${c0}\n" &&
-	printf "${bold}${YEL}Use the --clean flag to run \`make clean\` & \`make distclean\`.${c0}\n" &&
+	printf "${bold}${YEL}Use the --clean flag to remove previous build artifacts (_build dir).${c0}\n" &&
 	printf "${bold}${YEL}Use the --deps flag to install build dependencies.${c0}\n" &&
 	printf "${bold}${YEL}Use the --debug flag to make a debug build (with no installer).${c0}\n" &&
 	printf "${bold}${YEL}Use the --gtk flag to download GTK bundle for making installer.${c0}\n" &&
@@ -106,12 +105,12 @@ case $1 in
 	--deps) installDeps; exit 0;;
 esac
 
-# Clean artifacts
+# Clean artifacts (keeps geany_build/bundle so the GTK bundle isn't redownloaded)
 makeClean () {
 	printf "\n" &&
-	printf "${YEL}Running \`make clean\` and \`make distclean\`..." &&
+	printf "${YEL}Removing previous build artifacts..." &&
 	printf "${CYA}\n" &&
-	make clean && make distclean &&
+	rm -rf "${SOURCE_DIR}/_build" "${SOURCE_DIR}/geany_build/build" "${SOURCE_DIR}/geany_build/release" &&
 	printf "\n" &&
 	printf "${GRE}${bold}Done." &&
 	printf "\n" &&
@@ -122,9 +121,9 @@ case $1 in
 esac
 
 downloadBundle() {
-  mkdir -p ~/geany-ng/geany_build/bundle/geany-gtk &&
-  cd ~/geany-ng/geany_build/bundle/geany-gtk &&
-  bash ~/geany-ng/scripts/gtk-bundle-from-msys2.sh --mingw64 -c -3
+  mkdir -p "${SOURCE_DIR}/geany_build/bundle/geany-gtk" &&
+  cd "${SOURCE_DIR}/geany_build/bundle/geany-gtk" &&
+  bash "${SOURCE_DIR}/scripts/gtk-bundle-from-msys2.sh" --mingw64 -c -3
 }
 case $1 in
 	--gtk) downloadBundle; exit 0;;
@@ -143,22 +142,26 @@ export LFLAGS="-Wl,-O3 -msse4.1 -s -flto=auto" &&
 export LDLIBS="-Wl,-O3 -msse4.1 -s -flto=auto" &&
 export LDFLAGS="-Wl,-O3 -msse4.1 -s -flto=auto" &&
 
-export DESTINATON=~/geany-ng/geany_build &&
+export DESTINATION="${SOURCE_DIR}/geany_build" &&
 
-cd ~/geany-ng &&
-make distclean
+# Remove _build entirely: automake does not rebuild objects when only CFLAGS
+# change, so stale objects from a previous SIMD variant would end up in this one
+cd "${SOURCE_DIR}" &&
+rm -rf _build &&
 VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac) &&
 NOCONFIGURE=1 ./autogen.sh &&
 export lt_cv_deplibs_check_method=${lt_cv_deplibs_check_method='pass_all'} &&
 mkdir -p _build && cd _build &&
-../configure --disable-rpath --enable-the-force --prefix=${DESTINATON}/build --disable-silent-rules &&
+../configure --disable-rpath --enable-the-force --prefix="${DESTINATION}/build" --disable-silent-rules &&
 
-cd ~/geany-ng/_build &&
+cd "${SOURCE_DIR}/_build" &&
 make VERBOSE=1 V=1 -j4
-cd ~/geany-ng/_build &&
+cd "${SOURCE_DIR}/_build" &&
 make &&
 
-# Shouldn't have to do this, IDK why MinGW makes src/geany.exe incorrect one without .res applied
+# src/geany.exe is only libtool's wrapper stub (used to locate the uninstalled
+# libgeany DLL when running from the build tree) and never gets the .res/icon;
+# the real resource-linked binary lives in src/.libs/, so force it through
 cp -f -v src/.libs/geany.exe src/geany.exe &&
 
 make install &&
@@ -167,10 +170,10 @@ printf "\n" &&
 printf "${YEL}Building .exe Installer..." &&
 printf "${CYA}\n" &&
 
-python3 ~/geany-ng/geany-release.py $VERSION &&
+python3 "${SOURCE_DIR}/geany-release.py" "$VERSION" &&
 
 printf "\n" &&
-printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can find it in ${DESTINATON}/" &&
+printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can find it in ${DESTINATION}/" &&
 printf "\n" &&
 tput sgr0
 }
@@ -183,7 +186,7 @@ printf "\n" &&
 printf "${YEL}Building Geany-ng (Debug SSE2 Version)..." &&
 printf "${CYA}\n" &&
 
-# Build geany-ng installer for SSE4.1
+# Build geany-ng debug build (SSE2, no installer)
 export CFLAGS="-g -Og -msse2 -DDEBUG -DGEANY_DEBUG" &&
 export CXXFLAGS="-g -Og -msse2 -DDEBUG -DGEANY_DEBUG" &&
 export CPPFLAGS="-g -Og -msse2 -DDEBUG -DGEANY_DEBUG" &&
@@ -191,28 +194,32 @@ export LFLAGS="-msse2" &&
 export LDLIBS="-msse2" &&
 export LDFLAGS="-msse2" &&
 
-export DESTINATON=~/geany-ng/geany_build &&
+export DESTINATION="${SOURCE_DIR}/geany_build" &&
 
-cd ~/geany-ng &&
-make distclean
+# Remove _build entirely: automake does not rebuild objects when only CFLAGS
+# change, so stale objects from a previous SIMD variant would end up in this one
+cd "${SOURCE_DIR}" &&
+rm -rf _build &&
 VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac) &&
 NOCONFIGURE=1 ./autogen.sh &&
 export lt_cv_deplibs_check_method=${lt_cv_deplibs_check_method='pass_all'} &&
 mkdir -p _build && cd _build &&
-../configure --disable-rpath --enable-the-force --prefix=${DESTINATON}/build --disable-silent-rules &&
+../configure --disable-rpath --enable-the-force --prefix="${DESTINATION}/build" --disable-silent-rules &&
 
-cd ~/geany-ng/_build &&
+cd "${SOURCE_DIR}/_build" &&
 make VERBOSE=1 V=1 -j4
-cd ~/geany-ng/_build &&
+cd "${SOURCE_DIR}/_build" &&
 make &&
 
-# Shouldn't have to do this, IDK why MinGW makes src/geany.exe incorrect one without .res applied
+# src/geany.exe is only libtool's wrapper stub (used to locate the uninstalled
+# libgeany DLL when running from the build tree) and never gets the .res/icon;
+# the real resource-linked binary lives in src/.libs/, so force it through
 cp -f -v src/.libs/geany.exe src/geany.exe &&
 
 make install &&
 
 printf "\n" &&
-printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can find it in ${DESTINATON}/build/geany/" &&
+printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can find it in ${DESTINATION}/build/" &&
 printf "\n" &&
 tput sgr0
 }
@@ -232,22 +239,26 @@ export LFLAGS="-Wl,-O3 -mavx -maes -s -flto=auto" &&
 export LDLIBS="-Wl,-O3 -mavx -maes -s -flto=auto" &&
 export LDFLAGS="-Wl,-O3 -mavx -maes -s -flto=auto" &&
 
-export DESTINATON=~/geany-ng/geany_build &&
+export DESTINATION="${SOURCE_DIR}/geany_build" &&
 
-cd ~/geany-ng &&
-make distclean
+# Remove _build entirely: automake does not rebuild objects when only CFLAGS
+# change, so stale objects from a previous SIMD variant would end up in this one
+cd "${SOURCE_DIR}" &&
+rm -rf _build &&
 VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac) &&
 NOCONFIGURE=1 ./autogen.sh &&
 export lt_cv_deplibs_check_method=${lt_cv_deplibs_check_method='pass_all'} &&
 mkdir -p _build && cd _build &&
-../configure --disable-rpath --enable-the-force --prefix=${DESTINATON}/build --disable-silent-rules &&
+../configure --disable-rpath --enable-the-force --prefix="${DESTINATION}/build" --disable-silent-rules &&
 
-cd ~/geany-ng/_build &&
+cd "${SOURCE_DIR}/_build" &&
 make VERBOSE=1 V=1 -j4
-cd ~/geany-ng/_build &&
+cd "${SOURCE_DIR}/_build" &&
 make &&
 
-# Shouldn't have to do this, IDK why MinGW makes src/geany.exe incorrect one without .res applied
+# src/geany.exe is only libtool's wrapper stub (used to locate the uninstalled
+# libgeany DLL when running from the build tree) and never gets the .res/icon;
+# the real resource-linked binary lives in src/.libs/, so force it through
 cp -f -v src/.libs/geany.exe src/geany.exe &&
 
 make install &&
@@ -256,10 +267,10 @@ printf "\n" &&
 printf "${YEL}Building .exe Installer..." &&
 printf "${CYA}\n" &&
 
-python3 ~/geany-ng/geany-release.py $VERSION &&
+python3 "${SOURCE_DIR}/geany-release.py" "$VERSION" &&
 
 printf "\n" &&
-printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can find it in ${DESTINATON}/" &&
+printf "${GRE}${bold}Build Completed. ${YEL}${bold}You can find it in ${DESTINATION}/" &&
 printf "\n" &&
 tput sgr0 &&
 

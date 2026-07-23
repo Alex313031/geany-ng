@@ -22,9 +22,10 @@ if 'GITHUB_WORKSPACE' in os.environ:
         SOURCE_DIR = join(os.environ['GITHUB_WORKSPACE'], ".geany_source")
     BASE_DIR = join(os.environ['GITHUB_WORKSPACE'], 'geany_build')
 else:
-    # adjust paths to your needs ($HOME is used because expanduser() returns the Windows home directory)
-    SOURCE_DIR = join(os.environ['HOME'], 'geany-ng')
-    BASE_DIR = join(os.environ['HOME'], 'geany-ng', 'geany_build')
+    # build_win.sh exports GEANY_SOURCE_DIR; fall back to $HOME/geany-ng when
+    # run standalone ($HOME is used because expanduser() returns the Windows home directory)
+    SOURCE_DIR = os.environ.get('GEANY_SOURCE_DIR', join(os.environ['HOME'], 'geany-ng'))
+    BASE_DIR = join(SOURCE_DIR, 'geany_build')
 BUILD_DIR = join(SOURCE_DIR, '_build')
 GEANY_THEMES_DIR = join(SOURCE_DIR, 'data')
 RELEASE_DIR_ORIG = join(BASE_DIR, 'build')
@@ -85,6 +86,7 @@ def make_release(version_number):
         '/WX',
         '/V3',
         f'/DGEANY_RELEASE_DIR={RELEASE_DIR}',
+        f'/DGEANY_SOURCE_DIR={SOURCE_DIR}',
         f'/DGEANY_THEMES_DIR={GEANY_THEMES_DIR}',
         f'/DGTK_BUNDLE_DIR={BUNDLE_GTK}',
         f'-DGEANY_INSTALLER_NAME={INSTALLER_NAME}',
