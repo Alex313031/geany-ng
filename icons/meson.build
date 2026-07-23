@@ -1,4 +1,4 @@
-icon_dirs = [ '16x16', '24x24', '32x32', '48x48', 'scalable' ]
+icon_dirs = [ '16x16', '24x24', '32x32', '48x48', '64x64', 'scalable' ]
 
 # in all resolutions
 app_icon = 'geany'
@@ -26,7 +26,10 @@ foreach dir : icon_dirs
     foreach icon : action_icons
         install_data(join_paths(dir, icon+ext), install_dir: join_paths(icons_dir, dir, 'actions'))
     endforeach
-    install_data(join_paths('tango', dir, 'geany-save-all'+ext), install_dir: join_paths(tango_dir, dir, 'actions'))
+    # the Tango theme has no 64x64 icons
+    if dir != '64x64'
+        install_data(join_paths('tango', dir, 'geany-save-all'+ext), install_dir: join_paths(tango_dir, dir, 'actions'))
+    endif
 endforeach
 
 # classviewer icons only in 16x16
