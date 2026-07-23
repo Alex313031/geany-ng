@@ -182,10 +182,10 @@ build () {
     local STRIP_FLAG="-s"
   fi
 
-  export CFLAGS="${OPT_FLAGS} ${LTO_FLAGS} ${MFLAG} -static-libgcc -Wno-deprecated-declarations"
-  export CXXFLAGS="${OPT_FLAGS} ${LTO_FLAGS} ${MFLAG} -static-libstdc++"
+  export CFLAGS="${OPT_FLAGS} ${LTO_FLAGS} ${MFLAG} -Wno-deprecated-declarations"
+  export CXXFLAGS="${OPT_FLAGS} ${LTO_FLAGS} ${MFLAG}"
   export CPPFLAGS="${CXXFLAGS}"
-  export LDFLAGS="${LTO_FLAGS} ${STRIP_FLAG}"
+  export LDFLAGS="${LTO_FLAGS} ${STRIP_FLAG} -static-libgcc -static-libstdc++"
 
   if [ "$VERBOSE" = "1" ]; then
     local VFLAG="VERBOSE=1 V=1"

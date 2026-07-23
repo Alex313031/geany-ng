@@ -192,6 +192,7 @@ build () {
 
   local _startmsg="Building Geany-ng"
   local SIMD_FLAGS="-mfpmath=sse"
+  local SIMD_TAG=""
   if [ "$IS_X86" == "1" ]; then
     _startmsg+=" x86"
     # SSE2 baseline
@@ -199,36 +200,44 @@ build () {
     if [ "$USE_SSE3" == "1" ]; then
       _startmsg+=" (SSE3 Version)"
       SIMD_FLAGS+=" -msse3"
+      SIMD_TAG="sse3"
     fi
     if [ "$USE_SSE41" == "1" ]; then
       _startmsg+=" (SSE4.1 Version)"
       SIMD_FLAGS+=" -mssse3 -msse4.1"
+      SIMD_TAG="sse41"
     fi
     if [ "$USE_SSE42" == "1" ]; then
       _startmsg+=" (SSE4.2 Version)"
       SIMD_FLAGS+=" -msse4.2"
+      SIMD_TAG="sse42"
     fi
   elif [ "$IS_X64" == "1" ]; then
     _startmsg+=" x64"
     if [ "$USE_SSE3" == "1" ]; then
       _startmsg+=" (SSE3 Version)"
       SIMD_FLAGS+=" -msse3"
+      SIMD_TAG="sse3"
     fi
     if [ "$USE_SSE41" == "1" ]; then
       _startmsg+=" (SSE4.1 Version)"
       SIMD_FLAGS+=" -mssse3 -msse4.1"
+      SIMD_TAG="sse41"
     fi
     if [ "$USE_SSE42" == "1" ]; then
       _startmsg+=" (SSE4.2 Version)"
       SIMD_FLAGS+=" -msse4.2 -march=x86-64-v2"
+      SIMD_TAG="sse42"
     fi
     if [ "$USE_AVX" == "1" ]; then
       _startmsg+=" (AVX Version)"
       SIMD_FLAGS+=" -mavx -maes"
+      SIMD_TAG="avx"
     fi
     if [ "$USE_AVX2" == "1" ]; then
       _startmsg+=" (AVX2 Version)"
       SIMD_FLAGS+=" -mavx2 -mfma -march=x86-64-v3"
+      SIMD_TAG="avx2"
     fi
   else
     error_exit "Unsupported arch"
@@ -247,10 +256,10 @@ build () {
     local STRIP_FLAG="-s"
   fi
 
-  export CFLAGS="${OPT_FLAGS} ${LTO_FLAGS} -static-libgcc -Wno-deprecated-declarations"
-  export CXXFLAGS="${OPT_FLAGS} ${LTO_FLAGS} -static-libstdc++"
+  export CFLAGS="${OPT_FLAGS} ${LTO_FLAGS} -Wno-deprecated-declarations"
+  export CXXFLAGS="${OPT_FLAGS} ${LTO_FLAGS}"
   export CPPFLAGS="${CXXFLAGS}"
-  export LDFLAGS="${LTO_FLAGS} ${STRIP_FLAG}"
+  export LDFLAGS="${LTO_FLAGS} ${STRIP_FLAG} -static-libgcc -static-libstdc++"
 
   if [ "$VERBOSE" = "1" ]; then
     local VFLAG="VERBOSE=1 V=1"
@@ -279,8 +288,9 @@ build () {
   fi
 
   # Remove _build entirely: automake does not rebuild objects when only CFLAGS
-  # change, so stale objects from a previous SIMD variant would end up in this one
-  rm -rf _build
+  # change, so stale objects from a previous SIMD variant would end up in this
+  # one. The install prefix is wiped too so each install is hermetic.
+  rm -rf _build "${DESTINATION}/build"
 
   local VERSION
   VERSION=$(autom4te --no-cache --language=Autoconf-without-aclocal-m4 --trace AC_INIT:\$2 configure.ac) \
@@ -316,7 +326,7 @@ build () {
     printf "${GRE}\nBuild Completed. ${BOLD}You can find it in ${DESTINATION}/build/${C0}\n"
   else
     printf "\n${YEL}Building .exe Installer...${C0}\n\n"
-    try python3 "${HERE}/geany-release.py" "$VERSION"
+    try python3 "${HERE}/geany-release.py" "$VERSION" "$SIMD_TAG"
     printf "${GRE}\nBuild Completed. ${BOLD}You can find it in ${DESTINATION}/${C0}\n"
   fi
 }

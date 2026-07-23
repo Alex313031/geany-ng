@@ -62,7 +62,7 @@ def strip_files(*paths):
             run_command('strip', filename)
 
 
-def make_release(version_number):
+def make_release(version_number, simd_tag=''):
     # copy the release dir as it gets modified implicitly by converting files,
     # we want to keep a pristine version before we start
     prepare_release_dir()
@@ -81,7 +81,10 @@ def make_release(version_number):
     convert_text_files(*text_files)
     # create installer
     shutil.copy(join(BUILD_DIR, 'geany.nsi'), SOURCE_DIR)
-    INSTALLER_NAME = join(BASE_DIR, f'geany-ng_{version_number}_win64_setup.exe')
+    if simd_tag:
+        INSTALLER_NAME = join(BASE_DIR, f'geany-ng_{version_number}_win64_{simd_tag}_setup.exe')
+    else:
+        INSTALLER_NAME = join(BASE_DIR, f'geany-ng_{version_number}_win64_setup.exe')
     run_command(
         'makensis',
         '/WX',
@@ -97,5 +100,7 @@ def make_release(version_number):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="This script prepares a Geany release installer on Windows")
     parser.add_argument("version_number", help="Version Number (e.g. 2.1)")
+    parser.add_argument("simd_tag", nargs="?", default="",
+                        help="SIMD variant tag appended to the installer name (e.g. avx2)")
     opts = parser.parse_args()
-    make_release(opts.version_number)
+    make_release(opts.version_number, opts.simd_tag)
