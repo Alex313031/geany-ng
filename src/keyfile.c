@@ -290,8 +290,12 @@ static void init_pref_groups(void)
 		"spin_autocompletion_max_entries");
 	stash_group_add_spin_button_integer(group, (gint*)&editor_prefs.autocompletion_update_freq,
 		"autocompletion_update_freq", GEANY_MAX_SYMBOLS_UPDATE_FREQ, "spin_symbol_update_freq");
+	/* default to the Delt Dark scheme from geany-themes on fresh configs;
+	 * highlighting falls back to the built-in Default styles if the file
+	 * is not installed, and an explicit "Default" selection is saved as an
+	 * empty string so it is never overridden by this default */
 	stash_group_add_string(group, &editor_prefs.color_scheme,
-		"color_scheme", NULL);
+		"color_scheme", "delt-dark.conf");
 	stash_group_add_spin_button_integer(group, &editor_prefs.scroll_lines_around_cursor,
 		"scroll_lines_around_cursor", 0, "spin_scroll_lines_around_cursor");
 
