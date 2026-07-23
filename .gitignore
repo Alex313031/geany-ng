@@ -91,6 +91,7 @@ configure~
 /make_deb.sh
 /missing
 /mkinstalldirs
+/__pycache__
 /RUN
 /stamp-h
 /stamp-h1
