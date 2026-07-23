@@ -37,7 +37,7 @@ Unicode true
 !define PRODUCT_VERSION_ID "@VERSION@.0.0"
 !define PRODUCT_PUBLISHER "Alex313031"
 !define PRODUCT_WEB_SITE "https://github.com/Alex313031/geany-ng/"
-!define PRODUCT_DIR_REGKEY "Software\Geany"
+!define PRODUCT_DIR_REGKEY "Software\Geany-ng"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_EXE "$INSTDIR\bin\Geany.exe"
 !define PRODUCT_REGNAME "Geany.ProjectFile"
@@ -70,6 +70,9 @@ ManifestSupportedOS all
 !endif
 !ifndef GEANY_THEMES_DIR
 !define GEANY_THEMES_DIR "..\geany-themes"
+!endif
+!ifndef GEANY_SOURCE_DIR
+!define GEANY_SOURCE_DIR "."
 !endif
 !ifndef GTK_BUNDLE_DIR
 !define GTK_BUNDLE_DIR "gtk"
@@ -171,6 +174,11 @@ Section "!Program Files" SEC01
 
 	SetOutPath "$INSTDIR\share\icons"
 	File /r "${GEANY_RELEASE_DIR}\share\icons\*"
+
+	; geany-ng GTK theme, selectable by setting gtk-theme-name=Geany-ng
+	; in etc\gtk-3.0\settings.ini
+	SetOutPath "$INSTDIR\share\themes\Geany-ng\gtk-3.0"
+	File "/oname=gtk.css" "${GEANY_SOURCE_DIR}\geany.css"
 
 	SetOutPath "$INSTDIR"
 
