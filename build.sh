@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Alex313031.
 
 SCRIPTNAME=$(basename "$0")
-SCRIPTVER="2.0.0"
+SCRIPTVER="2.0.1"
 
 # Colors
 YEL='\033[1;33m'  # Yellow
@@ -92,7 +92,7 @@ install_deps() {
 }
 
 clean () {
-  cd "$HERE"
+  cd "$HERE" || error_exit "Could not cd into $HERE"
   [ -f Makefile ] || error_exit "Nothing to clean (no Makefile in $HERE)"
   printf "\n${YEL}Running \`make clean\`..."
   printf "${CYA}\n"
@@ -101,7 +101,7 @@ clean () {
 }
 
 dist_clean () {
-  cd "$HERE"
+  cd "$HERE" || error_exit "Could not cd into $HERE"
   [ -f Makefile ] || error_exit "Nothing to clean (no Makefile in $HERE)"
   printf "\n${YEL}Running \`make distclean\`..."
   printf "${CYA}\n"
@@ -182,8 +182,8 @@ build () {
     local STRIP_FLAG="-s"
   fi
 
-  export CFLAGS="${OPT_FLAGS} ${LTO_FLAGS} ${MFLAG} -Wno-deprecated-declarations"
-  export CXXFLAGS="${OPT_FLAGS} ${LTO_FLAGS} ${MFLAG}"
+  export CFLAGS="${OPT_FLAGS} ${LTO_FLAGS} ${MFLAG} -static-libgcc -Wno-deprecated-declarations"
+  export CXXFLAGS="${OPT_FLAGS} ${LTO_FLAGS} ${MFLAG} -static-libstdc++"
   export CPPFLAGS="${CXXFLAGS}"
   export LDFLAGS="${LTO_FLAGS} ${STRIP_FLAG}"
 
@@ -202,7 +202,7 @@ build () {
 
   printf "${CYA}\n"
 
-  cd "$HERE"
+  cd "$HERE" || error_exit "Could not cd into $HERE"
 
   # automake won't rebuild objects when only CFLAGS change, so
   # clear out any previous variant's objects first

@@ -27,7 +27,8 @@ else:
     SOURCE_DIR = os.environ.get('GEANY_SOURCE_DIR', join(os.environ['HOME'], 'geany-ng'))
     BASE_DIR = join(SOURCE_DIR, 'geany_build')
 BUILD_DIR = join(SOURCE_DIR, '_build')
-GEANY_THEMES_DIR = join(SOURCE_DIR, 'data')
+# colorschemes from the geany-themes submodule get bundled into the installer
+GEANY_THEMES_DIR = join(SOURCE_DIR, 'geany-themes')
 RELEASE_DIR_ORIG = join(BASE_DIR, 'build')
 RELEASE_DIR = join(BASE_DIR, 'release', 'geany')
 BUNDLE_BASE_DIR = join(BASE_DIR, 'bundle')
