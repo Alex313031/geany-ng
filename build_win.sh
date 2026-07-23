@@ -196,7 +196,11 @@ build () {
   if [ "$IS_X86" == "1" ]; then
     _startmsg+=" x86"
     # SSE2 baseline
-    SIMD_FLAGS+=" -msse -mfxsr -msse2"
+    if [ -z "$USE_SSE3$USE_SSE41$USE_SSE42" ]; then
+      _startmsg+=" (SSE2 Version)"
+      SIMD_FLAGS+=" -mfxsr -msse2"
+      SIMD_TAG="sse2"
+    fi
     if [ "$USE_SSE3" == "1" ]; then
       _startmsg+=" (SSE3 Version)"
       SIMD_FLAGS+=" -msse3"
@@ -214,6 +218,11 @@ build () {
     fi
   elif [ "$IS_X64" == "1" ]; then
     _startmsg+=" x64"
+    if [ -z "$USE_SSE3$USE_SSE41$USE_SSE42$USE_AVX$USE_AVX2" ]; then
+      _startmsg+=" (SSE2 Version)"
+      SIMD_FLAGS+=" -msse2 -march=x86-64"
+      SIMD_TAG="sse2"
+    fi
     if [ "$USE_SSE3" == "1" ]; then
       _startmsg+=" (SSE3 Version)"
       SIMD_FLAGS+=" -msse3"
