@@ -40,7 +40,9 @@ Unicode true
 !define PRODUCT_DIR_REGKEY "Software\Geany-ng"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_EXE "$INSTDIR\bin\Geany.exe"
-!define PRODUCT_REGNAME "Geany.ProjectFile"
+; distinct from upstream Geany's "Geany.ProjectFile" so installing or
+; uninstalling either one never touches the other's .geany association
+!define PRODUCT_REGNAME "Geany-ng.ProjectFile"
 !define PRODUCT_EXT ".geany"
 !define GTK_VERSION @GTK_VERSION@
 
@@ -55,7 +57,7 @@ VIAddVersionKey "LegalCopyright" "Copyright 2026 The Geany contributors and Alex
 VIAddVersionKey "FileDescription" "${PRODUCT_NAME} Installer"
 
 BrandingText "$(^NAME) installer (NSIS ${NSIS_VERSION})"
-InstallDir "$PROGRAMFILES64\Geany"
+InstallDir "$PROGRAMFILES64\Geany-ng"
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 SetCompressor /SOLID lzma
 ShowInstDetails hide
@@ -111,7 +113,7 @@ ReserveFile /plugin "LangDLL.dll"
 !define MUI_PAGE_CUSTOMFUNCTION_LEAVE OnDirLeave
 !insertmacro MUI_PAGE_DIRECTORY
 ; Start menu page
-!define MUI_STARTMENUPAGE_DEFAULTFOLDER "Geany"
+!define MUI_STARTMENUPAGE_DEFAULTFOLDER "Geany-ng"
 !define MUI_STARTMENUPAGE_REGISTRY_ROOT HKLM
 !define MUI_STARTMENUPAGE_REGISTRY_KEY "${PRODUCT_UNINST_KEY}"
 !define MUI_STARTMENUPAGE_REGISTRY_VALUENAME "Start Menu Folder"
@@ -123,7 +125,7 @@ ReserveFile /plugin "LangDLL.dll"
 !define MUI_FINISHPAGE_SHOWREADME_TEXT "Show Release Notes"
 !define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
 !define MUI_FINISHPAGE_RUN "$INSTDIR\bin\Geany.exe"
-!define MUI_FINISHPAGE_RUN_NOTCHECKED
+!define MUI_FINISHPAGE_RUN_TEXT "Run Geany-ng when finished"
 !insertmacro MUI_PAGE_FINISH
 
 !insertmacro MUI_UNPAGE_INSTFILES ; Uninstaller page
@@ -182,10 +184,10 @@ Section "!Program Files" SEC01
 
 	SetOutPath "$INSTDIR"
 
-	CreateShortCut "$INSTDIR\Geany.lnk" "$INSTDIR\bin\Geany.exe"
+	CreateShortCut "$INSTDIR\Geany-ng.lnk" "$INSTDIR\bin\Geany.exe"
 	!insertmacro MUI_STARTMENU_WRITE_BEGIN ${PRODUCT_NAME}
 	CreateDirectory "$SMPROGRAMS\$StartmenuFolder"
-	CreateShortCut "$SMPROGRAMS\$StartmenuFolder\Geany.lnk" "$INSTDIR\bin\Geany.exe"
+	CreateShortCut "$SMPROGRAMS\$StartmenuFolder\Geany-ng.lnk" "$INSTDIR\bin\Geany.exe"
 	!insertmacro MUI_STARTMENU_WRITE_END
 
 	; register the extension .geany
@@ -250,15 +252,17 @@ SectionEnd
 
 Section "Context Menus" SEC07
 	SectionIn 1
-	WriteRegStr HKCR "*\shell\OpenWithGeany" "" "Open with Geany"
-	WriteRegStr HKCR "*\shell\OpenWithGeany" "Icon" "$INSTDIR\bin\geany.exe"
-	WriteRegStr HKCR "*\shell\OpenWithGeany\command" "" '"$INSTDIR\bin\geany.exe" "%1"'
+	; distinct key from upstream Geany's "OpenWithGeany" so both context
+	; menu entries can coexist and uninstall independently
+	WriteRegStr HKCR "*\shell\OpenWithGeany-ng" "" "Open with Geany-ng"
+	WriteRegStr HKCR "*\shell\OpenWithGeany-ng" "Icon" "$INSTDIR\bin\geany.exe"
+	WriteRegStr HKCR "*\shell\OpenWithGeany-ng\command" "" '"$INSTDIR\bin\geany.exe" "%1"'
 SectionEnd
 
 Section "Desktop Shortcuts" SEC08
 	SectionIn 1
-	CreateShortCut "$DESKTOP\Geany.lnk" "$INSTDIR\bin\Geany.exe"
-	CreateShortCut "$QUICKLAUNCH\Geany.lnk" "$INSTDIR\bin\Geany.exe"
+	CreateShortCut "$DESKTOP\Geany-ng.lnk" "$INSTDIR\bin\Geany.exe"
+	CreateShortCut "$QUICKLAUNCH\Geany-ng.lnk" "$INSTDIR\bin\Geany.exe"
 SectionEnd
 
 ; Development files
@@ -312,14 +316,14 @@ Section Uninstall
 	Delete "$INSTDIR\Authors.txt"
 	Delete "$INSTDIR\ChangeLog.txt"
 	Delete "$INSTDIR\Copying.txt"
-	Delete "$INSTDIR\Geany.lnk"
+	Delete "$INSTDIR\Geany-ng.lnk"
 
 	; delete start menu entry
 	ReadRegStr $0 SHCTX "${PRODUCT_UNINST_KEY}" "StartMenu"
 	RMDir /r "$0"
 
-	Delete "$QUICKLAUNCH\Geany.lnk"
-	Delete "$DESKTOP\Geany.lnk"
+	Delete "$QUICKLAUNCH\Geany-ng.lnk"
+	Delete "$DESKTOP\Geany-ng.lnk"
 
 	RMDir /r "$INSTDIR\bin"
 	RMDir /r "$INSTDIR\data"
@@ -333,13 +337,13 @@ Section Uninstall
 	; remove .geany file extension
 	ReadRegStr $R0 SHCTX "Software\Classes\${PRODUCT_EXT}" ""
 	${if} $R0 == "${PRODUCT_REGNAME}"
-		DeleteRegKey SHCTX "${PRODUCT_EXT}"
+		DeleteRegKey SHCTX "Software\Classes\${PRODUCT_EXT}"
 		DeleteRegKey HKCR "${PRODUCT_EXT}"
-		DeleteRegKey SHCTX "${PRODUCT_REGNAME}"
-		DeleteRegKey HKCR "${PRODUCT_REGNAME}"
 	${endif}
+	DeleteRegKey SHCTX "Software\Classes\${PRODUCT_REGNAME}"
+	DeleteRegKey HKCR "${PRODUCT_REGNAME}"
 
-	DeleteRegKey HKCR "*\shell\OpenWithGeany"
+	DeleteRegKey HKCR "*\shell\OpenWithGeany-ng"
 
 	DeleteRegKey SHCTX "${PRODUCT_UNINST_KEY}"
 	DeleteRegKey HKCU "${PRODUCT_UNINST_KEY}"
@@ -355,13 +359,13 @@ SectionEnd
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
 !insertmacro MUI_DESCRIPTION_TEXT ${SEC01} "Required program files. You cannot skip these files."
 !insertmacro MUI_DESCRIPTION_TEXT ${SEC02} "Available plugins like 'Version Diff', 'Class Builder' and 'Insert Special Characters'."
-!insertmacro MUI_DESCRIPTION_TEXT ${SEC03} "Various translations of Geany's interface."
+!insertmacro MUI_DESCRIPTION_TEXT ${SEC03} "Various translations of Geany-ng's interface."
 !insertmacro MUI_DESCRIPTION_TEXT ${SEC04} "Manual in Text and HTML format."
 !insertmacro MUI_DESCRIPTION_TEXT ${SEC05} "Symbol lists necessary for auto completion of symbols."
-!insertmacro MUI_DESCRIPTION_TEXT ${SEC06} "You need these files to run Geany. If you have already installed a GTK Runtime Environment (${GTK_VERSION} or higher), you can skip it."
-!insertmacro MUI_DESCRIPTION_TEXT ${SEC07} "Add context menu item 'Open With Geany'"
-!insertmacro MUI_DESCRIPTION_TEXT ${SEC08} "Create shortcuts for Geany on the desktop and in the Quicklaunch Bar"
-!insertmacro MUI_DESCRIPTION_TEXT ${SEC09} "You need these files only if you want to develop own plugins for Geany. If unsure, you can skip it."
+!insertmacro MUI_DESCRIPTION_TEXT ${SEC06} "You need these files to run Geany-ng. If you have already installed a GTK Runtime Environment (${GTK_VERSION} or higher), you can skip it."
+!insertmacro MUI_DESCRIPTION_TEXT ${SEC07} "Add context menu item 'Open with Geany-ng'"
+!insertmacro MUI_DESCRIPTION_TEXT ${SEC08} "Create shortcuts for Geany-ng on the desktop and in the Quicklaunch Bar"
+!insertmacro MUI_DESCRIPTION_TEXT ${SEC09} "You need these files only if you want to develop own plugins for Geany-ng. If unsure, you can skip it."
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -390,7 +394,7 @@ done:
 !macroend
 
 Function .onInit
-	StrCpy "$StartmenuFolder" "Geany"
+	StrCpy "$StartmenuFolder" "Geany-ng"
 
 	; (from https://github.com/JabRef/jabref/blob/c93c9f68746f387d00c34b6c416fcedf7967095a/src/windows/nsis/setup.nsi)
 	; If the user does *not* have administrator privileges, abort
@@ -403,11 +407,11 @@ Function .onInit
 		SetShellVarContext current
 		; TODO is this really what we want? $PROGRAMFILES is not much better because
 		; probably the unprivileged user can't write it anyways
-		StrCpy $INSTDIR "$PROFILE\$(^Name)"
+		StrCpy $INSTDIR "$PROFILE\Geany-ng"
 	${endif}
 
 	; prevent running multiple instances of the installer
-	System::Call 'kernel32::CreateMutexA(i 0, i 0, t "geany_installer") i .r1 ?e'
+	System::Call 'kernel32::CreateMutexA(i 0, i 0, t "geany-ng_installer") i .r1 ?e'
 	Pop $R0
 	StrCmp $R0 0 +3
 	MessageBox MB_OK|MB_ICONEXCLAMATION "The installer is already running." /SD IDOK
@@ -417,7 +421,7 @@ Function .onInit
 	StrCmp $R0 "" finish
 
 	MessageBox MB_YESNO|MB_ICONEXCLAMATION \
-	"Geany has already been installed. $\nDo you want to remove the previous version before installing $(^Name) ?" \
+	"Geany-ng has already been installed. $\nDo you want to remove the previous version before installing $(^Name) ?" \
 		/SD IDYES IDYES remove IDNO finish
 
 remove:
@@ -450,7 +454,7 @@ Function un.onInit
 		; check if the Geany has been installed with admin permissions
 		ReadRegStr $0 HKLM "${PRODUCT_UNINST_KEY}" "Publisher"
 		${if} $0 != ""
-			MessageBox MB_OK|MB_ICONSTOP "You need administrator privileges to uninstall Geany!" \
+			MessageBox MB_OK|MB_ICONSTOP "You need administrator privileges to uninstall Geany-ng!" \
 				/SD IDOK
 			Abort
 		${endif}

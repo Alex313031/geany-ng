@@ -2303,7 +2303,9 @@ gchar *utils_get_user_config_dir(void)
 #ifdef G_OS_WIN32
 	return win32_get_user_config_dir();
 #else
-	return g_build_filename(g_get_user_config_dir(), "geany", NULL);
+	// "geany-ng" rather than "geany" so settings and the single-instance
+	// socket never collide with an upstream Geany install
+	return g_build_filename(g_get_user_config_dir(), "geany-ng", NULL);
 #endif
 }
 
