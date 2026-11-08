@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Alex313031.
 
 SCRIPTNAME=$(basename "$0")
-SCRIPTVER="2.0.1"
+SCRIPTVER="2.1.0"
 
 # Colors
 YEL='\033[1;33m'  # Yellow
@@ -54,7 +54,8 @@ Options:
   -h, --help                  Show this help.
   --version                   Show script version.
   --deps                      Install MSYS2 prerequisites for using this script.
-  --gtk                       Download the GTK bundle used to make the installer (arch follows the MSYS2 shell).
+  --refresh-gtk               Re-download the GTK bundle even if the one on disk is usable.
+  --allow-ucrt                Permit building in a UCRT shell (the result will not run on Windows 7).
   -j <count>, --jobs <count>  Override make job count. (default: $JOBS)
   -d, --debug                 Create a debug build (default is release mode; debug builds make no installer).
   -v, --verbose               Show verbose build output.
@@ -150,20 +151,69 @@ install_deps() {
   printf "${GRE}Done installing dependencies!${C0}\n"
 }
 
-download_bundle() {
-  # scripts/gtk-bundle-from-msys2.sh only knows the MINGW64 and UCRT64 ABIs
-  local BUNDLE_ARCH
+# MSYS2 environments linking against the UCRT instead of msvcrt. ucrtbase.dll is
+# only in-box from Windows 10 1507 onward and needs KB2999226 on Windows 7 SP1,
+# so these cannot produce the out-of-the-box Windows 7 support geany-ng targets.
+is_ucrt_shell() {
   case "$MSYSTEM" in
-    MINGW64) BUNDLE_ARCH="--mingw64" ;;
-    UCRT64)  BUNDLE_ARCH="--ucrt64" ;;
-    *) error_exit "--gtk requires a MINGW64 or UCRT64 shell (current: ${MSYSTEM:-none})" ;;
+    UCRT64|CLANG64|CLANGARM64) return 0 ;;
+    *) return 1 ;;
   esac
+}
 
-  printf "\n${YEL}Downloading the GTK bundle (${BUNDLE_ARCH#--}) for making the installer..."
+# The ABI name scripts/gtk-bundle-from-msys2.sh accepts; it only knows the two
+# x86_64 ABIs, so this fails for 32bit and clang shells.
+bundle_arch_for_shell() {
+  case "$MSYSTEM" in
+    MINGW64) echo "mingw64" ;;
+    UCRT64)  echo "ucrt64" ;;
+    *) return 1 ;;
+  esac
+}
+
+# The GTK bundle is only read by the NSIS installer (see geany.nsi.in), so it is
+# fetched for release builds only, and only when the copy on disk is missing,
+# incomplete, or built for a different ABI. ReadMe.Dependencies.Geany.txt is
+# written second-to-last by the bundle script under "set -e", which makes it a
+# reliable marker that the bundle finished; the installer needs it anyway. The
+# stamp file records the ABI, since an msvcrt bundle is not interchangeable
+# with a UCRT one.
+ensure_bundle() {
+  local BUNDLE_DIR="${HERE}/geany_build/bundle/geany-gtk"
+  local SENTINEL="${BUNDLE_DIR}/ReadMe.Dependencies.Geany.txt"
+  local STAMP="${BUNDLE_DIR}/.bundle-abi"
+
+  local BUNDLE_ARCH
+  BUNDLE_ARCH=$(bundle_arch_for_shell) || error_exit \
+    "The installer needs a GTK bundle, which requires a MINGW64 or UCRT64 shell (current: ${MSYSTEM:-none})"
+
+  if [ "$REFRESH_GTK" != "1" ] && [ -f "$SENTINEL" ] && [ -f "$STAMP" ] &&
+     [ "$(cat "$STAMP")" = "$BUNDLE_ARCH" ]; then
+    printf "\n${CYA}Reusing the existing ${BUNDLE_ARCH} GTK bundle (pass --refresh-gtk to re-download).${C0}\n"
+    return 0
+  fi
+
+  if [ -d "$BUNDLE_DIR" ]; then
+    # the bundle script extracts over whatever is already there, so a partial or
+    # wrong-ABI bundle would get mixed into the new one; start clean instead
+    if [ "$REFRESH_GTK" = "1" ]; then
+      printf "\n${YEL}Removing the existing GTK bundle to re-download it...${C0}\n"
+    else
+      printf "\n${YEL}Discarding the unusable GTK bundle in ${BUNDLE_DIR}...${C0}\n"
+    fi
+    rm -rf "$BUNDLE_DIR" || error_exit "Could not remove ${BUNDLE_DIR}"
+  fi
+
+  printf "\n${YEL}Downloading the GTK bundle (${BUNDLE_ARCH}) for making the installer..."
   printf "${CYA}\n"
-  mkdir -p "${HERE}/geany_build/bundle/geany-gtk" || error_exit "Could not create the bundle directory"
-  cd "${HERE}/geany_build/bundle/geany-gtk" || error_exit "Could not cd into the bundle directory"
-  try bash "${HERE}/scripts/gtk-bundle-from-msys2.sh" "$BUNDLE_ARCH" -c -3
+  mkdir -p "$BUNDLE_DIR" || error_exit "Could not create the bundle directory"
+  # in a subshell so the build's working directory is left alone
+  ( cd "$BUNDLE_DIR" &&
+      try bash "${HERE}/scripts/gtk-bundle-from-msys2.sh" "--${BUNDLE_ARCH}" -c -3 ) ||
+    error_exit "Failed to create the GTK bundle"
+  [ -f "$SENTINEL" ] ||
+    error_exit "The GTK bundle looks incomplete: ${SENTINEL} was never created"
+  echo "$BUNDLE_ARCH" > "$STAMP" || error_exit "Could not write ${STAMP}"
   printf "\n${GRE}${BOLD}Done. ${C0}\n"
 }
 
@@ -188,6 +238,17 @@ build () {
   fi
   if [ "$IS_X64" == "1" ] && { [ "$MSYSTEM" == "MINGW32" ] || [ "$MSYSTEM" == "CLANG32" ]; }; then
     error_exit "x64 builds require a MINGW64/UCRT64 shell (current: $MSYSTEM)"
+  fi
+  # a UCRT build looks completely normal and installs fine, it just refuses to
+  # start on Windows 7, so refuse here rather than let it ship unnoticed
+  if is_ucrt_shell; then
+    if [ "$ALLOW_UCRT" != "1" ]; then
+      error_exit "$MSYSTEM links against the UCRT, which Windows 7 does not ship out of the box.
+Geany-ng targets Windows 7, so builds are expected to come from a MINGW64 shell.
+Re-run this from a MINGW64 shell, or pass --allow-ucrt to build anyway."
+    fi
+    printf "\n${RED}${BOLD}Warning:${C0}${RED} building against the UCRT (${MSYSTEM}).${C0}\n"
+    printf "${RED}This build will not start on Windows 7 without KB2999226 installed.${C0}\n"
   fi
 
   local _startmsg="Building Geany-ng"
@@ -296,6 +357,14 @@ build () {
     try git -C "${HERE}" submodule update --init geany-themes
   fi
 
+  # likewise the GTK bundle, fetched before the compile so a bundle problem
+  # surfaces immediately instead of after a full build
+  if [ "$IS_DEBUG" != "1" ]; then
+    ensure_bundle
+  elif [ "$REFRESH_GTK" = "1" ]; then
+    printf "\n${YEL}Ignoring --refresh-gtk: debug builds make no installer.${C0}\n"
+  fi
+
   # Remove _build entirely: automake does not rebuild objects when only CFLAGS
   # change, so stale objects from a previous SIMD variant would end up in this
   # one. The install prefix is wiped too so each install is hermetic.
@@ -355,8 +424,14 @@ while :; do
         exit 0
         ;;
     --gtk)
-        download_bundle
-        exit 0
+        error_exit "'--gtk' was removed: the GTK bundle is now created automatically for release builds.
+Use --refresh-gtk to force a re-download of it."
+        ;;
+    --refresh-gtk)
+        REFRESH_GTK=1
+        ;;
+    --allow-ucrt)
+        ALLOW_UCRT=1
         ;;
     -v|--verbose)
         VERBOSE=1
