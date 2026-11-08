@@ -34,8 +34,7 @@ expat
 fontconfig
 freetype
 fribidi
-libgcc
-libstdc++
+@gcc_runtime@
 gdk-pixbuf2
 gettext-runtime
 glib2
@@ -121,6 +120,21 @@ set -e  # stop on errors
 # enable extended globbing as we need it in _getpkg
 shopt -s extglob
 
+# Newer mingw-w64-gcc splits the GCC runtime libraries out of gcc-libs into
+# separate libgcc and libstdc++ packages (MINGW-packages#30473).  geany-ng
+# builds against an older pinned MSYS2 that still ships the combined gcc-libs,
+# so use whichever layout this installation actually provides rather than
+# hardcoding either one.  This queries the local package database only ("-Q"),
+# so it neither installs anything nor touches the sync repos; the combined
+# gcc-libs is the fallback since that is what the pinned MSYS2 has.
+_gcc_runtime_pkgs() {
+	if pacman -Qq "mingw-w64-${ABI}-libgcc" >/dev/null 2>&1; then
+		echo "libgcc libstdc++"
+	else
+		echo "gcc-libs"
+	fi
+}
+
 initialize() {
 	if [ -z "$cachedir" ]; then
 		cachedir="/var/cache/pacman/pkg"
@@ -150,6 +164,8 @@ ${packages}
 ${gtk_dependency_pkgs}
 ${gtk}
 "
+	# see _gcc_runtime_pkgs
+	pkgs="${pkgs//@gcc_runtime@/$(_gcc_runtime_pkgs)}"
 }
 
 _mingw_base_dir() {

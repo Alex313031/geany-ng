@@ -67,9 +67,12 @@ CFLAGS="\
 	-Wno-deprecated-declarations"
 
 # cross-compilation environment
-ARCH="ucrt-x86_64"
-MINGW_ARCH="ucrt64"
-HOST="x86_64-w64-mingw32ucrt"
+# geany-ng stays on MINGW64/msvcrt rather than UCRT64: ucrtbase.dll is only
+# in-box from Windows 10 1507 on, so a UCRT64 build needs KB2999226 to start on
+# Windows 7 SP1, which would break out-of-the-box Windows 7 support.
+ARCH="x86_64"
+MINGW_ARCH="mingw64"
+HOST="x86_64-w64-mingw32"
 export LDFLAGS="-static-libgcc ${LDFLAGS}"
 export PKG_CONFIG_SYSROOT_DIR="/windows"
 export PKG_CONFIG_PATH="${PKG_CONFIG_SYSROOT_DIR}/${MINGW_ARCH}/lib/pkgconfig/"
